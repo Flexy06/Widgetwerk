@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Widgetwerk</string>
+    <string name="loading">…</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="play_pause">Play/pause</string>
+    <string name="media_listener">Widgetwerk live updates</string>
+    <string name="desc_clock">Big expressive digital clock on glass</string>
+    <string name="desc_analog">Shaped analog clock</string>
+    <string name="desc_date">Day and date in an expressive shape</string>
+    <string name="desc_weather">Current weather and the next hours</string>
+    <string name="desc_photo">Photos from Google Photos or your phone</string>
+    <string name="desc_glass">Just frosted glass</string>
+    <string name="desc_deco">Decorative shapes – no purpose, just looks</string>
+    <string name="desc_calendar">Your next events</string>
+    <string name="desc_battery">Battery with wavy ring</string>
+    <string name="desc_media">Now playing with controls</string>
+    <string name="desc_launcher">Favourite apps on a glass dock</string>
+</resources>

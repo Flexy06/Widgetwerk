@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView android:id="@+id/bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:importantForAccessibility="no" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="14dp">
+        <FrameLayout android:id="@+id/ring_wrap" android:layout_width="wrap_content" android:layout_height="wrap_content">
+            <ImageView android:id="@+id/ring" android:layout_width="96dp" android:layout_height="96dp"
+                android:importantForAccessibility="no" />
+            <TextView android:id="@+id/pct" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center" android:fontFamily="google-sans" android:textFontWeight="600"
+                android:includeFontPadding="false" android:maxLines="1" android:textSize="24sp" />
+        </FrameLayout>
+        <LinearLayout android:id="@+id/info" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:layout_marginStart="16dp" android:orientation="vertical">
+            <TextView android:id="@+id/bstate" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="google-sans" android:textFontWeight="600" android:maxLines="1" android:textSize="20sp" />
+            <TextView android:id="@+id/bdetail" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="google-sans" android:maxLines="2" android:textSize="13sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

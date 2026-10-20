@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView android:id="@+id/bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:importantForAccessibility="no" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="16dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextClock android:id="@+id/cal_day" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="google-sans" android:textFontWeight="500" android:includeFontPadding="false"
+                android:format12Hour="d" android:format24Hour="d" android:maxLines="1" android:textSize="40sp" />
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="10dp" android:orientation="vertical">
+                <TextClock android:id="@+id/cal_dow" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="google-sans" android:textFontWeight="600" android:includeFontPadding="false"
+                    android:format12Hour="EEEE" android:format24Hour="EEEE" android:maxLines="1" android:textSize="15sp" />
+                <TextClock android:id="@+id/cal_month" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:fontFamily="google-sans" android:includeFontPadding="false"
+                    android:format12Hour="MMMM" android:format24Hour="MMMM" android:maxLines="1" android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/events"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical" />
+        <TextView android:id="@+id/empty" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:fontFamily="google-sans" android:textSize="14sp" android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>

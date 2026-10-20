@@ -1,0 +1,1 @@
+# Release ist nicht minifiziert.

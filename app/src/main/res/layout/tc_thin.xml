@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Eine TextClock pro Schrift: RemoteViews können die Schrift nicht per Code setzen. -->
+<TextClock xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tc"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:fontFamily="sans-serif-thin"
+    android:textFontWeight="100"
+    android:includeFontPadding="false"
+    android:maxLines="1"
+    android:textColor="#FFFFFF"
+    android:textSize="64sp" />

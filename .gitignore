@@ -1,0 +1,14 @@
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+build.log
+
+# Signierung – niemals committen
+keystore/
+*.jks
+keystore.properties
