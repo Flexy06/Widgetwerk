@@ -292,7 +292,7 @@ object Art {
                     val start = rnd.nextFloat() * 360f
                     val sweep = 120f + rnd.nextFloat() * 200f
                     c.drawArc(RectF(cx - r, cy - r, cx + r, cy + r), start, sweep, false, aa().apply {
-                        style = Paint.Style.STROKE; strokeWidth = sw; strokeCap = Paint.Cap.ROUND
+                        this.style = Paint.Style.STROKE; strokeWidth = sw; strokeCap = Paint.Cap.ROUND
                         color = (if (i % 2 == 0) tones else tones2)[if (dark) 4 + (i % 3) else 4 + (i % 4)]
                     })
                     r += sw * 1.7f; i++

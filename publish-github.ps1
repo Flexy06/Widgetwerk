@@ -21,7 +21,8 @@ if (-not (Test-Path .git)) { git init -b main | Out-Null }
 git add -A
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-    git commit -q -m "Widgetwerk: initial widget pack + release workflow" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`nClaude-Session: https://claude.ai/code/session_016CFLFQjt9b8Pfr1tjppuH8"
+    $msg = if (git rev-parse --verify -q HEAD) { "Widgetwerk: update" } else { "Widgetwerk: initial widget pack + release workflow" }
+    git commit -q -m $msg -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`nClaude-Session: https://claude.ai/code/session_016CFLFQjt9b8Pfr1tjppuH8"
 }
 
 # Repo anlegen (privat), falls es noch nicht existiert

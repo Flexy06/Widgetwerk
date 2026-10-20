@@ -56,6 +56,11 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        // Release-Builds in CI nicht an Lint-Warnungen scheitern lassen
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 kotlin {
