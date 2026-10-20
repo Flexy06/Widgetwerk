@@ -25,7 +25,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Repo anlegen (privat), falls es noch nicht existiert
-gh repo view $repo 2>$null | Out-Null
+try { gh repo view $repo 2>$null | Out-Null } catch { $LASTEXITCODE = 1 }
 if ($LASTEXITCODE -ne 0) {
     gh repo create $repo --private --description 'Material 3 Expressive widget pack for Android with real frosted-glass blur' --source . --remote origin
 } elseif (-not (git remote | Select-String -Quiet '^origin$')) {
