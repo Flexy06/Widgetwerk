@@ -8,6 +8,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.provider.Settings
+import androidx.core.graphics.drawable.toBitmap
 
 /** Zugriff auf laufende Mediensitzungen (benötigt Benachrichtigungszugriff für [LiveService]). */
 object MediaHelper {
@@ -51,4 +52,25 @@ object MediaHelper {
     fun appLabel(ctx: Context, c: MediaController?): String? = c?.packageName?.let { pkg ->
         runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrNull()
     }
+
+    /** Länge des Titels in ms (0 = unbekannt). */
+    fun duration(c: MediaController?): Long = c?.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.coerceAtLeast(0) ?: 0
+
+    /** Aktuelle Position in ms, hochgerechnet seit dem letzten Update der Sitzung. */
+    fun position(c: MediaController?): Long {
+        val st = c?.playbackState ?: return 0
+        if (st.position < 0) return 0
+        if (st.state != PlaybackState.STATE_PLAYING) return st.position
+        val dt = android.os.SystemClock.elapsedRealtime() - st.lastPositionUpdateTime
+        return (st.position + dt * st.playbackSpeed).toLong().coerceAtLeast(0)
+    }
+
+    /** Zusatzaktionen des Players (z. B. Spotify "Zu Lieblingssongs hinzufügen"). */
+    fun customActions(c: MediaController?): List<PlaybackState.CustomAction> = c?.playbackState?.customActions.orEmpty()
+
+    /** Icon einer Zusatzaktion aus den Ressourcen des Players laden. */
+    fun actionIcon(ctx: Context, c: MediaController, a: PlaybackState.CustomAction, sizePx: Int): Bitmap? = runCatching {
+        val res = ctx.packageManager.getResourcesForApplication(c.packageName)
+        res.getDrawable(a.icon, null)?.toBitmap(sizePx, sizePx)
+    }.getOrNull()
 }

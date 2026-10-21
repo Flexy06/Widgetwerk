@@ -13,6 +13,7 @@ import android.graphics.drawable.Icon
 import android.os.BatteryManager
 import android.provider.CalendarContract
 import android.text.format.DateFormat
+import android.text.format.DateUtils
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
@@ -44,24 +45,24 @@ object Renderers {
 
     // ------------------------------------------------------------------ Hilfen
 
-    private fun RemoteViews.textPx(id: Int, px: Float) = setTextViewTextSize(id, PX, px)
+    internal fun RemoteViews.textPx(id: Int, px: Float) = setTextViewTextSize(id, PX, px)
 
-    private fun RemoteViews.tint(id: Int, color: Int) = setInt(id, "setColorFilter", color)
+    internal fun RemoteViews.tint(id: Int, color: Int) = setInt(id, "setColorFilter", color)
 
-    private fun RemoteViews.visible(id: Int, v: Boolean) = setViewVisibility(id, if (v) View.VISIBLE else View.GONE)
+    internal fun RemoteViews.visible(id: Int, v: Boolean) = setViewVisibility(id, if (v) View.VISIBLE else View.GONE)
 
-    private fun RemoteViews.tap(r: RenderCtx, action: TapAction) {
+    internal fun RemoteViews.tap(r: RenderCtx, action: TapAction) {
         if (!r.preview) setOnClickPendingIntent(R.id.root, WidgetUpdater.tapIntent(r.ctx, r.id, action))
     }
 
-    private fun RemoteViews.formats(id: Int, f12: String, f24: String, force24: Boolean?) {
+    internal fun RemoteViews.formats(id: Int, f12: String, f24: String, force24: Boolean?) {
         setCharSequence(id, "setFormat12Hour", if (force24 == true) f24 else f12)
         setCharSequence(id, "setFormat24Hour", if (force24 == false) f12 else f24)
     }
 
-    private fun pattern(skeleton: String) = DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton)
+    internal fun pattern(skeleton: String) = DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton)
 
-    private fun fontLayout(f: ClockFont) = when (f) {
+    internal fun fontLayout(f: ClockFont) = when (f) {
         ClockFont.GOOGLE_SANS -> R.layout.tc_google
         ClockFont.THIN -> R.layout.tc_thin
         ClockFont.LIGHT -> R.layout.tc_light
@@ -71,10 +72,10 @@ object Renderers {
         ClockFont.MONO -> R.layout.tc_mono
     }
 
-    private fun surface(r: RenderCtx, art: Bitmap? = null, square: Boolean = false): Rendered =
+    internal fun surface(r: RenderCtx, art: Bitmap? = null, square: Boolean = false): Rendered =
         SurfaceRenderer.render(r.ctx, r.cfg, r.pal, r.geo, art = art, seed = r.id + r.cfg.seed, square = square)
 
-    private fun views(r: RenderCtx, layout: Int) = RemoteViews(r.ctx.packageName, layout)
+    internal fun views(r: RenderCtx, layout: Int) = RemoteViews(r.ctx.packageName, layout)
 
     // ------------------------------------------------------------------ Uhr
 
@@ -391,7 +392,7 @@ object Renderers {
                 val open = Intent(Intent.ACTION_VIEW, ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, e.id))
                     .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, e.begin)
                     .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, e.end)
-                item.setOnClickPendingIntent(R.id.ev_root, WidgetUpdater.activityIntent(r.ctx, r.id, 4 + i, open))
+                item.setOnClickPendingIntent(R.id.ev_root, WidgetUpdater.activityIntent(r.ctx, r.id, 20 + i, open))
             }
             v.addView(R.id.events, item)
         }
@@ -425,7 +426,9 @@ object Renderers {
         v.setViewLayoutWidth(R.id.ring, ringDp, TypedValue.COMPLEX_UNIT_DIP)
         v.setViewLayoutHeight(R.id.ring, ringDp, TypedValue.COMPLEX_UNIT_DIP)
         v.setTextViewText(R.id.pct, "$level%")
-        v.textPx(R.id.pct, ringPx * 0.22f * cfg.textScale)
+        v.textPx(R.id.pct, ringPx * (if (charging) 0.2f else 0.22f) * cfg.textScale)
+        // Beim Laden sitzt der Blitz oben im Ring → Zahl etwas nach unten
+        v.setViewLayoutMargin(R.id.pct, RemoteViews.MARGIN_TOP, if (charging) ringPx * 0.22f else 0f, TypedValue.COMPLEX_UNIT_PX)
         v.setTextColor(R.id.pct, bg.text)
 
         v.visible(R.id.info, wide)
@@ -460,17 +463,22 @@ object Renderers {
 
     // ------------------------------------------------------------------ Medien
 
+    /** Hintergrund zum Albumcover zwischenspeichern – der Fortschritt aktualisiert alle paar Sekunden. */
+    private var mediaBgKey: Any? = null
+    private var mediaBg: Rendered? = null
+
     fun media(r: RenderCtx): RemoteViews {
         val cfg = r.cfg
         val access = MediaHelper.hasAccess(r.ctx)
         val c = if (access) MediaHelper.active(r.ctx) else null
         val art = MediaHelper.art(c)
-        val bg = surface(r, art = art)
+        val key = listOf(r.id, art?.generationId, art?.width, cfg, r.geo, r.pal.hash)
+        val bg = (if (key == mediaBgKey) mediaBg else null) ?: surface(r, art = art).also { if (!r.preview) { mediaBgKey = key; mediaBg = it } }
         val v = views(r, R.layout.w_media)
         v.setImageViewBitmap(R.id.bg, bg.bitmap)
 
         val showArt = r.wDp >= 220
-        val artDp = (r.hDp - 28f).coerceIn(48f, 140f)
+        val artDp = (r.hDp - 28f).coerceIn(48f, 150f)
         v.visible(R.id.art, showArt)
         if (showArt) {
             val px = r.dp(artDp).roundToInt()
@@ -496,23 +504,84 @@ object Renderers {
         })
         v.setTextColor(R.id.title, bg.text)
         v.setTextColor(R.id.artist, bg.textSecondary)
-        v.textPx(R.id.title, (r.hDp * 0.11f).coerceIn(14f, 20f) * r.density)
-        v.textPx(R.id.artist, (r.hDp * 0.08f).coerceIn(12f, 15f) * r.density)
+        v.textPx(R.id.title, (r.hDp * 0.1f).coerceIn(14f, 19f) * r.density)
+        v.textPx(R.id.artist, (r.hDp * 0.075f).coerceIn(12f, 14f) * r.density)
 
-        // Steuerung
         val tones = SurfaceRenderer.tonesFor(r.pal, cfg.colorRole)
         val btn = if (bg.light) tones[8] else tones[3]
+        val playing = MediaHelper.isPlaying(c)
+
+        // Fortschritt (Welle + Tippzonen zum Springen + live laufende Zeit)
+        val duration = MediaHelper.duration(c)
+        val position = MediaHelper.position(c).coerceAtMost(if (duration > 0) duration else Long.MAX_VALUE)
+        val showProgress = cfg.mediaProgress && c != null && duration > 0 && r.hDp >= 150
+        v.visible(R.id.progress_wrap, showProgress)
+        v.visible(R.id.times, showProgress && r.hDp >= 175)
+        v.removeAllViews(R.id.seek)
+        if (showProgress) {
+            val textDp = r.wDp - 28f - (if (showArt) artDp + 14f else 0f)
+            v.setImageViewBitmap(R.id.progress, Art.progressWave(r.dp(textDp).roundToInt(), r.dp(22f).roundToInt(),
+                position / duration.toFloat(), playing, ColorUtils.setAlphaComponent(bg.text, 50), btn, r.density))
+            v.setChronometer(R.id.elapsed, android.os.SystemClock.elapsedRealtime() - position, null, playing)
+            v.setTextColor(R.id.elapsed, bg.textSecondary)
+            v.setTextViewText(R.id.duration, DateUtils.formatElapsedTime(duration / 1000))
+            v.setTextColor(R.id.duration, bg.textSecondary)
+            if (!r.preview) for (i in 0 until SEEK_CELLS) {
+                val cell = RemoteViews(r.ctx.packageName, R.layout.item_seek)
+                cell.setOnClickPendingIntent(R.id.seek_cell, WidgetUpdater.actionIntent(r.ctx, r.id, ActionReceiver.SEEK, 6 + i) {
+                    it.putExtra(ActionReceiver.EXTRA_FRACTION, (i + 0.5f) / SEEK_CELLS)
+                })
+                v.addView(R.id.seek, cell)
+            }
+        }
+
+        // Steuerung
         val onBtn = if (ColorUtils.calculateLuminance(btn) > 0.45) Color.BLACK else Color.WHITE
-        val playPx = r.dp(52f).roundToInt()
+        val playPx = r.dp(50f).roundToInt()  // wird von ImageView passend skaliert
         val shape = Bitmap.createBitmap(playPx, playPx, Bitmap.Config.ARGB_8888)
         Canvas(shape).drawPath(Shapes.path(ShapeKind.COOKIE9, RectF(0f, 0f, playPx.toFloat(), playPx.toFloat()), 0f),
             android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = btn })
         v.setImageViewBitmap(R.id.play_bg, shape)
-        v.setImageViewResource(R.id.play, if (MediaHelper.isPlaying(c)) R.drawable.ic_pause else R.drawable.ic_play)
+        v.setImageViewResource(R.id.play, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
         v.tint(R.id.play, onBtn)
         v.tint(R.id.prev, bg.text)
         v.tint(R.id.next, bg.text)
-        v.visible(R.id.controls, access && r.hDp >= 90)
+        // Kompakt bei 1 Zeile Höhe: Knöpfe passend verkleinern statt abschneiden
+        val avail = r.hDp - 28f
+        val showArtist = avail >= 22f + 18f + 4f + 40f
+        var controlsDp = avail - 4f - 22f - (if (showArtist) 18f else 0f) - (if (showProgress) 22f + 6f else 0f) - (if (showProgress && r.hDp >= 175) 14f else 0f)
+        val showTitle = controlsDp >= 30f || !access
+        if (!showTitle) controlsDp = avail - 4f
+        v.visible(R.id.title, showTitle)
+        v.visible(R.id.artist, showArtist || !access)
+        val playDp = controlsDp.coerceIn(26f, 50f)
+        val smallDp = (playDp * 0.78f).coerceAtMost(38f)
+        v.setViewLayoutWidth(R.id.play_frame, playDp, TypedValue.COMPLEX_UNIT_DIP)
+        v.setViewLayoutHeight(R.id.play_frame, playDp, TypedValue.COMPLEX_UNIT_DIP)
+        listOf(R.id.prev, R.id.next, R.id.custom1, R.id.custom2).forEach {
+            v.setViewLayoutWidth(it, smallDp, TypedValue.COMPLEX_UNIT_DIP)
+            v.setViewLayoutHeight(it, smallDp, TypedValue.COMPLEX_UNIT_DIP)
+            v.setViewPadding(it, r.dp(smallDp * 0.2f).roundToInt(), r.dp(smallDp * 0.2f).roundToInt(), r.dp(smallDp * 0.2f).roundToInt(), r.dp(smallDp * 0.2f).roundToInt())
+        }
+        val pp = r.dp(playDp * 0.26f).roundToInt()
+        v.setViewPadding(R.id.play, pp, pp, pp, pp)
+        v.visible(R.id.controls, access)
+
+        // Zusatzknöpfe des Players (z. B. Spotify-Herz)
+        val actions = if (cfg.mediaActions && c != null) MediaHelper.customActions(c).take(2) else emptyList()
+        listOf(R.id.custom1, R.id.custom2).forEachIndexed { i, vid ->
+            val a = actions.getOrNull(i)
+            val icon = a?.let { MediaHelper.actionIcon(r.ctx, c!!, it, r.dp(24f).roundToInt()) }
+            v.visible(vid, icon != null)
+            if (a != null && icon != null) {
+                v.setImageViewBitmap(vid, icon)
+                v.tint(vid, if (i == 0) btn else bg.text)
+                v.setContentDescription(vid, a.name)
+                if (!r.preview) v.setOnClickPendingIntent(vid, WidgetUpdater.actionIntent(r.ctx, r.id, ActionReceiver.CUSTOM, 4 + i) {
+                    it.putExtra(ActionReceiver.EXTRA_CUSTOM, a.action)
+                })
+            }
+        }
         if (!r.preview) {
             v.setOnClickPendingIntent(R.id.play, WidgetUpdater.actionIntent(r.ctx, r.id, ActionReceiver.PLAY_PAUSE, 1))
             v.setOnClickPendingIntent(R.id.prev, WidgetUpdater.actionIntent(r.ctx, r.id, ActionReceiver.PREV, 2))
@@ -521,6 +590,8 @@ object Renderers {
         v.tap(r, if (access) TapAction.MEDIA_OPEN else TapAction.CONFIGURE)
         return v
     }
+
+    private const val SEEK_CELLS = 12
 
     // ------------------------------------------------------------------ App-Dock
 
@@ -545,7 +616,8 @@ object Renderers {
             return v
         }
         val dateDp = if (cfg.dockDate && r.hDp >= 100) 30f else 0f
-        val iconDp = min(min(r.hDp - 20f - dateDp, r.wDp / apps.size - 14f), 64f).coerceAtLeast(28f)
+        val labelDp = if (cfg.dockLabels) 18f else 0f
+        val iconDp = min(min(r.hDp - 20f - dateDp - labelDp, r.wDp / apps.size - 14f), 64f).coerceAtLeast(24f)
         val iconPx = r.dp(iconDp).roundToInt()
         val tones = SurfaceRenderer.tonesFor(r.pal, cfg.colorRole)
         val container = if (r.pal.dark) tones[9] else tones[3]
@@ -558,10 +630,15 @@ object Renderers {
             item.setViewLayoutHeight(R.id.app_icon, iconDp, TypedValue.COMPLEX_UNIT_DIP)
             val label = runCatching { pm.getActivityInfo(cn, 0).loadLabel(pm) }.getOrNull()
             item.setContentDescription(R.id.app_icon, label)
+            item.visible(R.id.app_label, cfg.dockLabels)
+            if (cfg.dockLabels) {
+                item.setTextViewText(R.id.app_label, label)
+                item.setTextColor(R.id.app_label, bg.text)
+            }
             if (!r.preview) {
                 val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(cn)
                     .addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                item.setOnClickPendingIntent(R.id.app_cell, WidgetUpdater.activityIntent(r.ctx, r.id, 4 + i, launch))
+                item.setOnClickPendingIntent(R.id.app_cell, WidgetUpdater.activityIntent(r.ctx, r.id, 20 + i, launch))
             }
             v.addView(R.id.apps, item)
         }

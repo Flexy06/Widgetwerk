@@ -98,7 +98,7 @@ object SurfaceRenderer {
         when (cfg.surface) {
             Surface.GLASS -> {
                 val wall = WallpaperSource.get(ctx)
-                if (wall != null) drawGlass(ctx, c, wall, geo, cfg.blur, dst)
+                if (wall != null) drawGlass(ctx, c, wall, geo, cfg.page, cfg.blur, dst)
                 else drawFrost(c, pal, dst, seed, cfg.blur)
             }
             Surface.FROST -> drawFrost(c, pal, dst, seed, cfg.blur)
@@ -128,15 +128,8 @@ object SurfaceRenderer {
     }
 
     /** Wallpaper-Ausschnitt an der Widget-Position blurren. */
-    private fun drawGlass(ctx: Context, c: Canvas, wall: Bitmap, geo: WidgetGeometry, blur: Float, dst: RectF) {
-        val k = WallpaperSource.cacheScale(ctx, wall)
-        val b = geo.screenBounds
-        val region = if (b != null) RectF(b.left * k, b.top * k, b.right * k, b.bottom * k)
-        else {
-            // Noch nicht kalibriert: Bildmitte als Schätzung
-            val w = geo.widthPx * k; val h = geo.heightPx * k
-            RectF(wall.width / 2f - w / 2, wall.height * 0.55f - h / 2, wall.width / 2f + w / 2, wall.height * 0.55f + h / 2)
-        }
+    private fun drawGlass(ctx: Context, c: Canvas, wall: Bitmap, geo: WidgetGeometry, page: Int, blur: Float, dst: RectF) {
+        val region = WallpaperSource.regionFor(ctx, wall, screenRect(ctx, geo), page)
         drawSmooth(c, Blur.blurRegion(wall, region, blur), dst, cover = false)
     }
 
@@ -217,13 +210,19 @@ object SurfaceRenderer {
         c.drawPath(inverse, Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) })
     }
 
+    /** Bildschirm-Rechteck des Widgets; noch nicht kalibriert → Schätzung in der Bildschirmmitte. */
+    fun screenRect(ctx: Context, geo: WidgetGeometry): Rect = geo.screenBounds ?: run {
+        val (sw, sh) = WallpaperSource.screenSize(ctx)
+        val l = (sw - geo.widthPx) / 2; val t = (sh * 0.55f - geo.heightPx / 2f).toInt()
+        Rect(l, t, l + geo.widthPx, t + geo.heightPx)
+    }
+
     /** Mittlere Helligkeit des Hintergrunds (bei "None" das Wallpaper dahinter). */
     private fun luminance(ctx: Context, cfg: WidgetConfig, bmp: Bitmap, geo: WidgetGeometry): Float {
         if (cfg.surface == Surface.NONE) {
             val wall = WallpaperSource.get(ctx) ?: return 0f // ohne Wallpaper: helle Schrift
-            val b = geo.screenBounds ?: return averageLum(wall)
-            val k = WallpaperSource.cacheScale(ctx, wall)
-            val r = Rect((b.left * k).toInt(), (b.top * k).toInt(), (b.right * k).toInt(), (b.bottom * k).toInt())
+            val f = WallpaperSource.regionFor(ctx, wall, screenRect(ctx, geo), cfg.page)
+            val r = Rect(f.left.toInt(), f.top.toInt(), f.right.toInt(), f.bottom.toInt())
             if (!r.intersect(0, 0, wall.width, wall.height) || r.width() < 1 || r.height() < 1) return averageLum(wall)
             return averageLum(Bitmap.createBitmap(wall, r.left, r.top, r.width(), r.height()))
         }

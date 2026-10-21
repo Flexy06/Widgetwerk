@@ -132,18 +132,22 @@ object Art {
 
     // ------------------------------------------------------------------ Akku
 
-    /** Ring mit welliger Fortschrittslinie (M3 Expressive "wavy progress"). */
+    /**
+     * Akku-Ring: flache Linie beim Entladen, wellige Linie (M3 Expressive) beim Laden.
+     * Beim Laden zusätzlich ein Blitz in einer Cookie-Form innen über der Prozentzahl.
+     * Alles bleibt innerhalb des Bitmaps (nichts wird abgeschnitten).
+     */
     fun batteryRing(sizePx: Int, level: Float, charging: Boolean, track: Int, progress: Int, dp: Float): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val stroke = max(4f, 6.5f * dp)
-        val amp = 2.6f * dp
-        val r = sizePx / 2f - stroke - amp
+        val stroke = max(4f, sizePx * 0.065f)
+        val amp = if (charging) stroke * 0.45f else 0f
+        val r = sizePx / 2f - stroke / 2f - amp - 1f
         val cx = sizePx / 2f
         c.drawCircle(cx, cx, r, aa().apply { style = Paint.Style.STROKE; strokeWidth = stroke; color = track })
-        val sweep = (360f * level.coerceIn(0f, 1f))
+        val sweep = 360f * level.coerceIn(0f, 1f)
         if (sweep > 0.5f) {
-            val waves = 14
+            val waves = 12
             val p = Path()
             val steps = (sweep * 2).toInt().coerceAtLeast(2)
             for (i in 0..steps) {
@@ -156,17 +160,49 @@ object Art {
             c.drawPath(p, aa().apply { style = Paint.Style.STROKE; strokeWidth = stroke; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; color = progress })
         }
         if (charging) {
-            // kleiner Blitz oben auf dem Ring
-            val h = stroke * 2.6f
-            val bx = cx; val by = cx - r - h / 2
-            c.drawCircle(bx, cx - r, h * 0.62f, aa().apply { color = progress })
-            val p = Path().apply {
-                val w = h * 0.5f; val top = by + h * 0.12f; val hh = h * 0.76f
-                moveTo(bx + w * 0.1f, top); lineTo(bx - w * 0.4f, top + hh * 0.56f); lineTo(bx - w * 0.02f, top + hh * 0.56f)
-                lineTo(bx - w * 0.12f, top + hh); lineTo(bx + w * 0.42f, top + hh * 0.38f); lineTo(bx + w * 0.04f, top + hh * 0.38f); close()
+            // Blitz-Badge innen oben (über der Prozentzahl)
+            val badge = r * 0.42f
+            val by = cx - r * 0.5f
+            val rect = RectF(cx - badge / 2, by - badge / 2, cx + badge / 2, by + badge / 2)
+            c.drawPath(Shapes.path(ShapeKind.COOKIE9, rect, 0f), aa().apply { color = progress })
+            val h = badge * 0.62f; val w = h * 0.62f
+            val top = by - h / 2
+            val bolt = Path().apply {
+                moveTo(cx + w * 0.12f, top); lineTo(cx - w * 0.45f, top + h * 0.56f); lineTo(cx - w * 0.02f, top + h * 0.56f)
+                lineTo(cx - w * 0.14f, top + h); lineTo(cx + w * 0.45f, top + h * 0.4f); lineTo(cx + w * 0.04f, top + h * 0.4f); close()
             }
-            c.drawPath(p, aa().apply { color = if (ColorUtils.calculateLuminance(progress) > 0.5) Color.BLACK else Color.WHITE })
+            c.drawPath(bolt, aa().apply {
+                color = if (ColorUtils.calculateLuminance(progress) > 0.5) Color.BLACK else Color.WHITE
+                pathEffect = android.graphics.CornerPathEffect(h * 0.05f)
+            })
         }
+        return bmp
+    }
+
+    // ------------------------------------------------------------------ Medien-Fortschritt
+
+    /** Fortschrittsbalken: gespielter Teil als Welle (beim Abspielen), Rest als flache Spur, runder Griff. */
+    fun progressWave(w: Int, h: Int, fraction: Float, playing: Boolean, track: Int, progress: Int, dp: Float): Bitmap {
+        val bmp = Bitmap.createBitmap(max(2, w), max(2, h), Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val stroke = 4f * dp
+        val cy = h / 2f
+        val thumbR = 6f * dp
+        val x0 = thumbR; val x1 = w - thumbR
+        val xp = x0 + (x1 - x0) * fraction.coerceIn(0f, 1f)
+        c.drawLine(min(xp + thumbR * 1.4f, x1), cy, x1, cy, aa().apply { color = track; strokeWidth = stroke; strokeCap = Paint.Cap.ROUND })
+        val amp = if (playing) 2.6f * dp else 0f
+        val wave = 22f * dp
+        val p = Path()
+        var x = x0
+        p.moveTo(x, cy)
+        while (x < xp) {
+            x = min(x + 2f, xp)
+            p.lineTo(x, cy + amp * sin((x - x0) / wave * 2 * PI).toFloat())
+        }
+        if (xp > x0 + 1) c.drawPath(p, aa().apply { style = Paint.Style.STROKE; color = progress; strokeWidth = stroke; strokeCap = Paint.Cap.ROUND })
+        // Griff als kleiner senkrechter Balken (M3 Expressive Slider)
+        c.drawRoundRect(RectF(xp - 2f * dp, cy - thumbR * 1.4f, xp + 2f * dp, cy + thumbR * 1.4f), 2f * dp, 2f * dp, aa().apply { color = progress })
         return bmp
     }
 
@@ -325,6 +361,14 @@ object Art {
             mono.setBounds(inset.toInt(), inset.toInt(), (sizePx - inset).toInt(), (sizePx - inset).toInt())
             mono.setTint(onContainer)
             mono.draw(c)
+        } else if (themed) {
+            // App ohne monochromes Icon: selbst eine Silhouette erzeugen (erzwungenes Theming)
+            c.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, aa().apply { color = container })
+            val glyph = forcedMonochrome(d, sizePx)
+            val tint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = android.graphics.PorterDuffColorFilter(onContainer, android.graphics.PorterDuff.Mode.SRC_IN)
+            }
+            c.drawBitmap(glyph, 0f, 0f, tint)
         } else if (d is AdaptiveIconDrawable) {
             val path = Path().apply { addCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, Path.Direction.CW) }
             c.save(); c.clipPath(path)
@@ -337,6 +381,49 @@ object Art {
             c.drawBitmap(d.toBitmap(sizePx, sizePx), 0f, 0f, null)
         }
         return out
+    }
+
+    /**
+     * Erzeugt aus einem farbigen Icon eine Alpha-Maske:
+     * 1. Adaptive Icon mit transparentem Vordergrund → Vordergrund-Silhouette.
+     * 2. Sonst: Pixel, die sich deutlich von der Hintergrundfarbe (Rand) unterscheiden, werden deckend.
+     */
+    fun forcedMonochrome(d: Drawable, sizePx: Int): Bitmap {
+        val inset = (-sizePx * 0.18f).toInt()
+        val fg: Bitmap
+        if (d is AdaptiveIconDrawable && d.foreground != null) {
+            fg = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            d.foreground!!.setBounds(inset, inset, sizePx - inset, sizePx - inset)
+            d.foreground!!.draw(Canvas(fg))
+        } else {
+            fg = d.toBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888).copy(Bitmap.Config.ARGB_8888, true)
+        }
+        val px = IntArray(sizePx * sizePx)
+        fg.getPixels(px, 0, sizePx, 0, 0, sizePx, sizePx)
+        val opaque = px.count { (it ushr 24) > 200 }
+        val out = IntArray(px.size)
+        if (opaque < px.size * 0.55f) {
+            // Silhouette reicht – Kanten bleiben über Alpha erhalten
+            for (i in px.indices) out[i] = (px[i] ushr 24) shl 24
+        } else {
+            // Vollflächiges Icon: Hintergrundfarbe = Mittel der Pixel am Rand des inneren Bereichs
+            val m = (sizePx * 0.22f).toInt()
+            var rs = 0L; var gs = 0L; var bs = 0L; var n = 0
+            for (k in m until sizePx - m) {
+                for (p in intArrayOf(px[m * sizePx + k], px[(sizePx - m - 1) * sizePx + k], px[k * sizePx + m], px[k * sizePx + sizePx - m - 1])) {
+                    rs += (p shr 16) and 0xff; gs += (p shr 8) and 0xff; bs += p and 0xff; n++
+                }
+            }
+            val br = (rs / n).toInt(); val bgc = (gs / n).toInt(); val bb = (bs / n).toInt()
+            for (i in px.indices) {
+                val p = px[i]
+                val dr = ((p shr 16) and 0xff) - br; val dg = ((p shr 8) and 0xff) - bgc; val db = (p and 0xff) - bb
+                val dist = kotlin.math.sqrt((dr * dr + dg * dg + db * db).toFloat()) / 441f
+                val a = ((dist - 0.08f) * 4f).coerceIn(0f, 1f) * ((p ushr 24) / 255f)
+                out[i] = (a * 255).toInt() shl 24
+            }
+        }
+        return Bitmap.createBitmap(out, sizePx, sizePx, Bitmap.Config.ARGB_8888)
     }
 
     /** Platzhalter-Cover (Notenzeichen in Cookie-Form). */

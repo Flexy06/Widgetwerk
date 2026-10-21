@@ -56,6 +56,11 @@ class CalendarWidget : BaseWidget(WidgetKind.CALENDAR)
 class BatteryWidget : BaseWidget(WidgetKind.BATTERY)
 class MediaWidget : BaseWidget(WidgetKind.MEDIA)
 class LauncherWidget : BaseWidget(WidgetKind.LAUNCHER)
+class CountdownWidget : BaseWidget(WidgetKind.COUNTDOWN)
+class NoteWidget : BaseWidget(WidgetKind.NOTE)
+class WorldWidget : BaseWidget(WidgetKind.WORLD)
+class ProgressWidget : BaseWidget(WidgetKind.PROGRESS)
+class SunWidget : BaseWidget(WidgetKind.SUN)
 
 /** Zuordnung Widget-Art ↔ Provider-Klasse. */
 object WidgetRegistry {
@@ -71,6 +76,11 @@ object WidgetRegistry {
         WidgetKind.BATTERY -> BatteryWidget::class.java
         WidgetKind.MEDIA -> MediaWidget::class.java
         WidgetKind.LAUNCHER -> LauncherWidget::class.java
+        WidgetKind.COUNTDOWN -> CountdownWidget::class.java
+        WidgetKind.NOTE -> NoteWidget::class.java
+        WidgetKind.WORLD -> WorldWidget::class.java
+        WidgetKind.PROGRESS -> ProgressWidget::class.java
+        WidgetKind.SUN -> SunWidget::class.java
     }
 
     fun component(ctx: Context, kind: WidgetKind) = ComponentName(ctx, providerClass(kind))

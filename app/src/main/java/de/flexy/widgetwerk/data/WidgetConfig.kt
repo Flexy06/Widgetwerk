@@ -16,6 +16,11 @@ enum class WidgetKind(val title: String, val subtitle: String) {
     BATTERY("Battery", "Wavy charge ring"),
     MEDIA("Now playing", "Artwork, title and controls"),
     LAUNCHER("App dock", "Your favourite apps on glass"),
+    COUNTDOWN("Countdown", "Days until something big"),
+    NOTE("Note", "A sticky note on glass"),
+    WORLD("World clock", "The time somewhere else"),
+    PROGRESS("Time progress", "Day, week, month & year"),
+    SUN("Sun & moon", "Daylight arc and moon phase"),
 }
 
 /** Hintergrund-Material des Widgets. */
@@ -38,7 +43,8 @@ enum class Tint(val label: String) { AUTO("Auto"), LIGHT("Light"), DARK("Dark"),
 enum class ShapeKind(val label: String, val polar: Boolean) {
     ROUNDED("Rounded", false),
     PILL("Pill", false),
-    ARCH("Arch", false),
+    ARCH("Arch ↑", false),
+    ARCH_DOWN("Arch ↓", false),
     SQUIRCLE("Squircle", true),
     CIRCLE("Circle", true),
     COOKIE4("Cookie 4", true),
@@ -73,6 +79,9 @@ enum class DateStyle(val label: String) { SHAPE("In shape"), HEADLINE("Headline"
 enum class DecoStyle(val label: String) {
     SHAPE("Shape"), ORBS("Orbs"), STACK("Stacked shapes"), WAVES("Waves"), DOTS("Dots"), RINGS("Rings")
 }
+
+@Serializable
+enum class ProgressStyle(val label: String) { RINGS("Rings"), BARS("Bars") }
 
 @Serializable
 enum class ColorRole(val label: String) { PRIMARY("Primary"), SECONDARY("Secondary"), TERTIARY("Tertiary"), NEUTRAL("Neutral") }
@@ -123,6 +132,23 @@ data class WidgetConfig(
     val apps: List<String> = emptyList(),     // ComponentName.flattenToString()
     val themedIcons: Boolean = true,
     val dockDate: Boolean = false,
+    val dockLabels: Boolean = false,
+    // --- Glas-Position ---
+    val page: Int = 0,                        // Homescreen-Seite (für Wallpaper-Parallaxe)
+    // --- Medien ---
+    val mediaProgress: Boolean = true,
+    val mediaActions: Boolean = true,         // Zusatzknöpfe des Players (z. B. Spotify ♥)
+    // --- Countdown ---
+    val countdownTitle: String = "Holidays",
+    val countdownEpochDay: Long? = null,      // LocalDate.toEpochDay()
+    // --- Notiz ---
+    val noteText: String = "",
+    val noteCentered: Boolean = false,
+    // --- Weltuhr ---
+    val zoneId: String = "America/New_York",
+    val zoneLabel: String? = null,
+    // --- Fortschritt ---
+    val progressStyle: ProgressStyle = ProgressStyle.RINGS,
 ) {
     companion object {
         /** Sinnvolle Startwerte je Widget-Art. */
@@ -138,6 +164,11 @@ data class WidgetConfig(
             WidgetKind.BATTERY -> WidgetConfig(kind, shape = ShapeKind.ROUNDED, cornerDp = 36f)
             WidgetKind.MEDIA -> WidgetConfig(kind, surface = Surface.ART, cornerDp = 32f)
             WidgetKind.LAUNCHER -> WidgetConfig(kind, shape = ShapeKind.PILL, blur = 0.7f)
+            WidgetKind.COUNTDOWN -> WidgetConfig(kind, shape = ShapeKind.COOKIE12, surface = Surface.ACCENT, colorRole = ColorRole.TERTIARY)
+            WidgetKind.NOTE -> WidgetConfig(kind, cornerDp = 28f, tint = Tint.LIGHT, tintStrength = 0.45f)
+            WidgetKind.WORLD -> WidgetConfig(kind, cornerDp = 32f)
+            WidgetKind.PROGRESS -> WidgetConfig(kind, shape = ShapeKind.ROUNDED, cornerDp = 36f)
+            WidgetKind.SUN -> WidgetConfig(kind, cornerDp = 32f)
         }
     }
 }
@@ -151,6 +182,7 @@ data class GlobalSettings(
     val offsetY: Float = 0f,
     val zoom: Float = 1f,             // 1..1.5
     val systemWallpaperId: Int = -1,
+    val pages: Int = 1,               // Homescreen-Seiten, über die das Wallpaper scrollt (1 = kein Scrollen)
     val paletteHash: Int = 0,
 )
 

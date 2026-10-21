@@ -8,7 +8,7 @@ UI-Texte Englisch, Code-Kommentare Deutsch.
   Kalender, Fotos (verkleinerte Kopien in `filesDir/photos`).
 - `glass/` – Rendering ohne Zusatzbibliotheken: `SurfaceRenderer` (Glas/Milchglas/Tonal/Akzent/Artwork, Tönung, Korn,
   Lichtkante, Masken), `Shapes` (eigene expressive Formen als `Path`), `Blur` (Box-Blur), `WallpaperSource`, `Art`.
-- `widget/` – `BaseWidget` + 11 Provider, `WidgetUpdater` (rendert seriell mit Mutex), `Renderers`,
+- `widget/` – `BaseWidget` + 16 Provider (`MoreRenderers`: Countdown, Notiz, Weltuhr, Fortschritt, Sonne & Mond), `WidgetUpdater` (rendert seriell mit Mutex), `Renderers`,
   `TapActivity` (Trampolin: speichert `sourceBounds` für den Glas-Blur), `LiveService` (NotificationListener:
   Medien, Akku, Wallpaper-/Dark-Mode-Wechsel), `RefreshWorker` (30 min) + `CalendarWatcher` (Content-URI-Trigger).
 - `ui/` – `MainActivity` (Galerie mit echten RemoteViews-Vorschauen, Glas-Quelle), `ConfigureActivity`.
@@ -18,6 +18,13 @@ UI-Texte Englisch, Code-Kommentare Deutsch.
 - Uhren brauchen keine Updates (TextClock/AnalogClock). Zeiger-Bitmaps nutzen Bitmap-Dichte, damit sie in voller Größe gezeichnet werden.
 - Hintergrund-Bitmaps sind auf `SurfaceRenderer.MAX_PIXELS` begrenzt (RemoteViews-Speicherlimit).
 - Klick auf Widget-Root muss MUTABLE sein, sonst fehlen die `sourceBounds`.
+- Wallpaper-Cache hat Bildschirmhöhe, Breite bleibt bei Parallaxe erhalten; Ausschnitt je Seite: `WallpaperSource.visibleLeft` (xOffset = page/(pages-1)).
+  "Wallpaper fixieren" setzt das Bild exakt bildschirmgroß (SET_WALLPAPER) → keine Parallaxe.
+- Medien-Fortschritt: RemoteViews kennen keine Slider → Wellen-Bitmap + 12 unsichtbare Tippzonen (Seek), Chronometer für die laufende Zeit,
+  LiveService zeichnet alle 5 s neu (nur bei Wiedergabe + Bildschirm an).
+- PendingIntent-RequestCodes: id*64 + Slot (1–3 Medien, 4–5 Player-Aktionen, 6–17 Seek, 20+ Kalender/Dock).
+- Erzwungene Themed Icons: `Art.forcedMonochrome` (Vordergrund-Silhouette bzw. Farbabstand zum Hintergrund als Alpha).
+- Compile-Check ohne Gradle möglich: kotlinc (K2JVMCompiler) gegen android.jar + AAR-classes.jar + generierte R-Klasse.
 
 ## Offene Punkte
 - Build in Android Studio prüfen (Code wurde ohne Android-SDK geschrieben).

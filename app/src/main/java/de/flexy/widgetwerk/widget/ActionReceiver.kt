@@ -14,6 +14,11 @@ class ActionReceiver : BroadcastReceiver() {
         const val PLAY_PAUSE = "de.flexy.widgetwerk.PLAY_PAUSE"
         const val NEXT = "de.flexy.widgetwerk.NEXT"
         const val PREV = "de.flexy.widgetwerk.PREV"
+        const val SEEK = "de.flexy.widgetwerk.SEEK"
+        const val CUSTOM = "de.flexy.widgetwerk.CUSTOM"
+        const val FLASH = "de.flexy.widgetwerk.FLASH"
+        const val EXTRA_FRACTION = "fraction"
+        const val EXTRA_CUSTOM = "custom_action"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -23,6 +28,11 @@ class ActionReceiver : BroadcastReceiver() {
             PLAY_PAUSE -> if (MediaHelper.isPlaying(c)) t?.pause() else t?.play()
             NEXT -> t?.skipToNext()
             PREV -> t?.skipToPrevious()
+            SEEK -> {
+                val d = MediaHelper.duration(c)
+                if (d > 0) t?.seekTo((d * intent.getFloatExtra(EXTRA_FRACTION, 0f)).toLong())
+            }
+            CUSTOM -> intent.getStringExtra(EXTRA_CUSTOM)?.let { a -> t?.sendCustomAction(a, null) }
         }
         // Falls der Live-Dienst nicht läuft: kurz warten und selbst aktualisieren
         val pending = goAsync()

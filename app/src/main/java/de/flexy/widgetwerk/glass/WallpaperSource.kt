@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ImageDecoder
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.net.Uri
 import android.os.Environment
@@ -50,8 +51,52 @@ object WallpaperSource {
         return bmp
     }
 
-    /** Pixel des Cache-Bilds pro Bildschirmpixel. */
-    fun cacheScale(ctx: Context, cacheBmp: Bitmap): Float = cacheBmp.width.toFloat() / screenSize(ctx).first
+    /** Pixel des Cache-Bilds pro Bildschirmpixel (das Cache-Bild hat genau Bildschirmhöhe). */
+    fun cacheScale(ctx: Context, cacheBmp: Bitmap): Float = cacheBmp.height.toFloat() / screenSize(ctx).second
+
+    /**
+     * Linker Rand (in Cache-Pixeln) des sichtbaren Wallpaper-Ausschnitts auf Seite [page].
+     * Ist das Bild breiter als der Bildschirm, verschiebt der Launcher es beim Seitenwechsel
+     * (Parallaxe) – genau wie ImageWallpaper: xOffset = page / (pages - 1).
+     */
+    fun visibleLeft(ctx: Context, cacheBmp: Bitmap, page: Int, g: GlobalSettings = ConfigStore.global(ctx)): Float {
+        val k = cacheScale(ctx, cacheBmp)
+        val screenW = screenSize(ctx).first * k
+        val excess = (cacheBmp.width - screenW).coerceAtLeast(0f)
+        val f = if (g.pages > 1) page.coerceIn(0, g.pages - 1) / (g.pages - 1f) else 0.5f
+        return (excess * f + g.offsetX * screenW * 0.25f).coerceIn(0f, excess)
+    }
+
+    /** Bereich hinter einem Widget (Bildschirm-Rechteck) im Cache-Bild. */
+    fun regionFor(ctx: Context, cacheBmp: Bitmap, screen: Rect, page: Int): RectF {
+        val k = cacheScale(ctx, cacheBmp)
+        val left = visibleLeft(ctx, cacheBmp, page)
+        return RectF(left + screen.left * k, screen.top * k, left + screen.right * k, screen.bottom * k)
+    }
+
+    /**
+     * Setzt das gewählte Bild exakt bildschirmgroß als Wallpaper. Dann kann der Launcher es
+     * beim Seitenwechsel nicht mehr verschieben → Glas passt auf jeder Seite, kein Nachwackeln.
+     */
+    fun lockAsWallpaper(ctx: Context): Boolean = runCatching {
+        val src = BitmapFactory.decodeFile(File(ctx.filesDir, SRC).path) ?: return false
+        val g = ConfigStore.global(ctx)
+        val (sw, sh) = screenSize(ctx)
+        val out = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888)
+        val scale = max(sw / src.width.toFloat(), sh / src.height.toFloat()) * g.zoom.coerceIn(1f, 2f)
+        val dw = src.width * scale; val dh = src.height * scale
+        val exX = dw - sw; val exY = dh - sh
+        val left = -exX / 2 - g.offsetX * exX
+        val top = -exY / 2 - g.offsetY * exY
+        Canvas(out).drawBitmap(src, null, RectF(left, top, left + dw, top + dh), Paint(Paint.FILTER_BITMAP_FLAG))
+        val wm = WallpaperManager.getInstance(ctx)
+        wm.setBitmap(out, null, true, WallpaperManager.FLAG_SYSTEM)
+        // Quelle = genau dieses Bild, keine Seiten mehr
+        File(ctx.filesDir, SRC).outputStream().use { out.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+        val id = runCatching { wm.getWallpaperId(WallpaperManager.FLAG_SYSTEM) }.getOrDefault(-1)
+        ConfigStore.updateGlobal(ctx) { it.copy(pages = 1, offsetX = 0f, offsetY = 0f, zoom = 1f, systemWallpaperId = id) }
+        reprocess(ctx)
+    }.getOrDefault(false)
 
     /** Ein vom Nutzer gewähltes Bild als Wallpaper-Quelle übernehmen. */
     fun importPicked(ctx: Context, uri: Uri): Boolean {
@@ -106,16 +151,21 @@ object WallpaperSource {
         cache = null
     }
 
-    /** Rohbild → Bildschirmformat (Center-Crop + Zoom/Versatz). */
+    /**
+     * Rohbild → Bildschirmhöhe (1/SCALE). Die Breite bleibt erhalten, wenn das Bild breiter als der
+     * Bildschirm ist – den passenden Ausschnitt je Homescreen-Seite wählt [visibleLeft].
+     */
     fun reprocess(ctx: Context, g: GlobalSettings = ConfigStore.global(ctx)): Boolean {
         val src = BitmapFactory.decodeFile(File(ctx.filesDir, SRC).path) ?: return false
         val (sw, sh) = screenSize(ctx)
         val cw = sw / SCALE; val ch = sh / SCALE
-        val out = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888)
         val scale = max(cw / src.width.toFloat(), ch / src.height.toFloat()) * g.zoom.coerceIn(1f, 2f)
         val dw = src.width * scale; val dh = src.height * scale
-        val exX = dw - cw; val exY = dh - ch
-        val left = -exX / 2 - g.offsetX * exX.coerceAtLeast(cw * 0.2f)
+        // Breite: Bildschirm, oder breiter wenn das Wallpaper über mehrere Seiten scrollt
+        val outW = if (g.pages > 1) dw.coerceIn(cw.toFloat(), cw * 3f).toInt() else cw
+        val out = Bitmap.createBitmap(outW, ch, Bitmap.Config.ARGB_8888)
+        val exX = dw - outW; val exY = dh - ch
+        val left = -exX / 2 - (if (g.pages > 1) 0f else g.offsetX * exX.coerceAtLeast(cw * 0.2f))
         val top = -exY / 2 - g.offsetY * exY.coerceAtLeast(ch * 0.2f)
         Canvas(out).drawBitmap(src, null, RectF(left, top, left + dw, top + dh), Paint(Paint.FILTER_BITMAP_FLAG))
         File(ctx.filesDir, PROC).outputStream().use { out.compress(Bitmap.CompressFormat.JPEG, 90, it) }

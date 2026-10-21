@@ -39,7 +39,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import de.flexy.widgetwerk.data.ProgressStyle
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Close
@@ -140,10 +147,11 @@ class ConfigureActivity : ComponentActivity() {
     }
 }
 
-private val rectShapes = listOf(ShapeKind.ROUNDED, ShapeKind.PILL, ShapeKind.ARCH)
+private val rectShapes = listOf(ShapeKind.ROUNDED, ShapeKind.PILL, ShapeKind.ARCH, ShapeKind.ARCH_DOWN)
 
 private fun shapesFor(kind: WidgetKind) = when (kind) {
-    WidgetKind.ANALOG, WidgetKind.DATE, WidgetKind.PHOTO, WidgetKind.GLASS, WidgetKind.DECO, WidgetKind.BATTERY -> ShapeKind.entries.toList()
+    WidgetKind.ANALOG, WidgetKind.DATE, WidgetKind.PHOTO, WidgetKind.GLASS, WidgetKind.DECO, WidgetKind.BATTERY,
+    WidgetKind.COUNTDOWN, WidgetKind.PROGRESS -> ShapeKind.entries.toList()
     else -> rectShapes
 }
 
@@ -195,12 +203,20 @@ private fun ConfigScreen(id: Int, kind: WidgetKind, onDone: () -> Unit) {
                         }
                     }
                     WidgetKind.CALENDAR -> CalendarOptions(cfg, update)
-                    WidgetKind.MEDIA -> MediaOptions()
+                    WidgetKind.MEDIA -> MediaOptions(cfg, update)
                     WidgetKind.LAUNCHER -> LauncherOptions(cfg, update)
+                    WidgetKind.COUNTDOWN -> CountdownOptions(cfg, update)
+                    WidgetKind.NOTE -> NoteOptions(cfg, update)
+                    WidgetKind.WORLD -> WorldOptions(cfg, update)
+                    WidgetKind.PROGRESS -> Section("Progress") {
+                        Choices(ProgressStyle.entries, cfg.progressStyle, { it.label }) { update(cfg.copy(progressStyle = it)) }
+                    }
+                    WidgetKind.SUN -> WeatherOptions(id, cfg, update, weatherExtras = false)
                     WidgetKind.BATTERY, WidgetKind.GLASS -> Unit
                 }
                 MaterialOptions(kind, cfg, update)
-                AlignmentInfo(id)
+                ApplyToAll(id, cfg)
+                AlignmentInfo(id, cfg, update)
                 Spacer(Modifier.height(24.dp))
             }
         }
@@ -228,7 +244,7 @@ private fun MaterialOptions(kind: WidgetKind, cfg: WidgetConfig, update: (Widget
         if (kind != WidgetKind.DECO || cfg.decoStyle != DecoStyle.STACK) {
             Text("Shape", style = MaterialTheme.typography.labelLarge)
             ShapePicker(shapesFor(kind), cfg.shape) { update(cfg.copy(shape = it)) }
-            if (cfg.shape == ShapeKind.ROUNDED || cfg.shape == ShapeKind.ARCH) {
+            if (cfg.shape == ShapeKind.ROUNDED || cfg.shape == ShapeKind.ARCH || cfg.shape == ShapeKind.ARCH_DOWN) {
                 LabeledSlider("Corner radius", cfg.cornerDp, 0f..64f, "${cfg.cornerDp.roundToInt()} dp") { update(cfg.copy(cornerDp = it)) }
             }
         }
@@ -239,16 +255,40 @@ private fun MaterialOptions(kind: WidgetKind, cfg: WidgetConfig, update: (Widget
     }
 }
 
+/** Material, Form und Farben dieses Widgets auf alle anderen übertragen. */
 @Composable
-private fun AlignmentInfo(id: Int) {
+private fun ApplyToAll(id: Int, cfg: WidgetConfig) {
+    val ctx = LocalContext.current
+    TextButton(onClick = {
+        WidgetRegistry.all(ctx).filter { it.first != id }.forEach { (oid, okind) ->
+            val o = ConfigStore.loadOrDefault(ctx, oid, okind)
+            val shapeOk = cfg.shape in shapesFor(okind)
+            ConfigStore.save(ctx, oid, o.copy(
+                surface = if (cfg.surface == Material.ART && okind != WidgetKind.PHOTO && okind != WidgetKind.MEDIA) Material.GLASS else cfg.surface,
+                tint = cfg.tint, tintStrength = cfg.tintStrength, blur = cfg.blur, cornerDp = cfg.cornerDp,
+                shape = if (shapeOk) cfg.shape else o.shape, grain = cfg.grain, rim = cfg.rim, colorRole = cfg.colorRole,
+            ))
+        }
+        WidgetUpdater.requestAll(ctx)
+        Toast.makeText(ctx, "Look applied to all widgets", Toast.LENGTH_SHORT).show()
+    }) { Text("Apply this look to all my widgets") }
+}
+
+@Composable
+private fun AlignmentInfo(id: Int, cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
     val ctx = LocalContext.current
     val changes by ConfigStore.changes.collectAsState()
     val b = remember(changes) { ConfigStore.bounds(ctx, id) }
+    val pages = remember(changes) { ConfigStore.global(ctx).pages }
     Section(
         "Glass position",
         subtitle = if (b != null) "Aligned at ${b.left}, ${b.top} (${b.width()}×${b.height()} px). Moved the widget? Just tap it once."
         else "Not aligned yet – tap the widget once on your home screen so the glass matches your wallpaper.",
     ) {
+        if (pages > 1) {
+            Text("Home screen page", style = MaterialTheme.typography.labelLarge)
+            Choices((0 until pages).toList(), cfg.page.coerceIn(0, pages - 1), { "Page ${it + 1}" }) { update(cfg.copy(page = it)) }
+        }
         if (b != null) TextButton(onClick = { ConfigStore.clearBounds(ctx, id); WidgetUpdater.request(ctx, id) }) { Text("Forget position") }
     }
 }
@@ -274,7 +314,7 @@ private fun ClockOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
 // ---------------------------------------------------------------- Wetter
 
 @Composable
-private fun WeatherOptions(id: Int, cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
+private fun WeatherOptions(id: Int, cfg: WidgetConfig, update: (WidgetConfig) -> Unit, weatherExtras: Boolean = true) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
@@ -339,7 +379,7 @@ private fun WeatherOptions(id: Int, cfg: WidgetConfig, update: (WidgetConfig) ->
             )
         }
     }
-    Section("Weather") {
+    if (weatherExtras) Section("Weather") {
         Choices(listOf(false, true), cfg.fahrenheit, { if (it) "°F" else "°C" }) { update(cfg.copy(fahrenheit = it)) }
         SwitchRow("Hourly forecast", cfg.showHourly, "Shown when the widget is tall enough") { update(cfg.copy(showHourly = it)) }
         LabeledSlider("Text size", cfg.textScale, 0.7f..1.2f, pct(cfg.textScale)) { update(cfg.copy(textScale = it)) }
@@ -435,7 +475,7 @@ private fun CalendarOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
 }
 
 @Composable
-private fun MediaOptions() {
+private fun MediaOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
     val ctx = LocalContext.current
     val tick = rememberResumeTick()
     val access = remember(tick) { MediaHelper.hasAccess(ctx) }
@@ -447,6 +487,12 @@ private fun MediaOptions() {
         if (!access) Button(onClick = { openListenerSettings(ctx) }) {
             Icon(Icons.Rounded.NotificationsActive, null); Spacer(Modifier.width(8.dp)); Text("Allow access")
         }
+        SwitchRow("Progress bar", cfg.mediaProgress, "Tap anywhere on the bar to jump there. Needs a 3-row tall widget.") {
+            update(cfg.copy(mediaProgress = it))
+        }
+        SwitchRow("Player buttons", cfg.mediaActions, "Extra buttons the app offers – e.g. Spotify's ♥ (Add to Liked Songs)") {
+            update(cfg.copy(mediaActions = it))
+        }
     }
 }
 
@@ -454,53 +500,168 @@ private fun MediaOptions() {
 
 private class AppEntry(val component: String, val label: String, val icon: Bitmap)
 
+private const val MAX_DOCK = 8
+
 @Composable
 private fun LauncherOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
     val ctx = LocalContext.current
     var sheet by remember { mutableStateOf(false) }
-    Section("Apps", subtitle = "Pick up to 6 apps for the dock") {
-        Button(onClick = { sheet = true }) {
-            Icon(Icons.Rounded.Apps, null); Spacer(Modifier.width(8.dp)); Text(if (cfg.apps.isEmpty()) "Choose apps" else "Change apps (${cfg.apps.size})")
+    // Alle startbaren Apps einmal laden (für Liste + Suche)
+    val allApps = remember { mutableStateListOf<AppEntry>() }
+    LaunchedEffect(Unit) {
+        val list = withContext(Dispatchers.Default) {
+            val pm = ctx.packageManager
+            pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                .filter { it.activityInfo.packageName != ctx.packageName }
+                .map {
+                    val cn = ComponentName(it.activityInfo.packageName, it.activityInfo.name)
+                    AppEntry(cn.flattenToString(), it.loadLabel(pm).toString(), it.loadIcon(pm).toBitmap(96, 96))
+                }
+                .sortedBy { it.label.lowercase() }
         }
-        SwitchRow("Themed icons", cfg.themedIcons, "Monochrome icons in your colors, like the Pixel launcher") { update(cfg.copy(themedIcons = it)) }
+        allApps.addAll(list)
+    }
+    val byId = allApps.associateBy { it.component }
+
+    Section("Apps", subtitle = "Up to $MAX_DOCK apps. Use the arrows to change the order.") {
+        cfg.apps.forEachIndexed { i, comp ->
+            val a = byId[comp]
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    a?.let { Image(it.icon.asImageBitmap(), null, Modifier.size(36.dp)) } ?: Box(Modifier.size(36.dp))
+                    Text(a?.label ?: comp.substringBefore('/'), Modifier.weight(1f).padding(horizontal = 12.dp), maxLines = 1)
+                    IconButton(onClick = { update(cfg.copy(apps = cfg.apps.move(i, i - 1))) }, enabled = i > 0) {
+                        Icon(Icons.Rounded.KeyboardArrowUp, "Move up")
+                    }
+                    IconButton(onClick = { update(cfg.copy(apps = cfg.apps.move(i, i + 1))) }, enabled = i < cfg.apps.size - 1) {
+                        Icon(Icons.Rounded.KeyboardArrowDown, "Move down")
+                    }
+                    IconButton(onClick = { update(cfg.copy(apps = cfg.apps - comp)) }) { Icon(Icons.Rounded.Close, "Remove") }
+                }
+            }
+        }
+        if (cfg.apps.size < MAX_DOCK) Button(onClick = { sheet = true }) {
+            Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(8.dp)); Text("Add apps")
+        }
+        SwitchRow("Themed icons", cfg.themedIcons, "All icons in your colors – apps without a themed icon get one generated") { update(cfg.copy(themedIcons = it)) }
+        SwitchRow("App names", cfg.dockLabels, "Small label under each icon") { update(cfg.copy(dockLabels = it)) }
         SwitchRow("Date above icons", cfg.dockDate, "Needs a 2-row tall widget") { update(cfg.copy(dockDate = it)) }
     }
     if (sheet) {
-        val apps = remember { mutableStateListOf<AppEntry>() }
-        LaunchedEffect(Unit) {
-            val list = withContext(Dispatchers.Default) {
-                val pm = ctx.packageManager
-                val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                pm.queryIntentActivities(intent, 0)
-                    .filter { it.activityInfo.packageName != ctx.packageName }
-                    .map {
-                        val cn = ComponentName(it.activityInfo.packageName, it.activityInfo.name)
-                        AppEntry(cn.flattenToString(), it.loadLabel(pm).toString(), it.loadIcon(pm).toBitmap(96, 96))
-                    }
-                    .sortedBy { it.label.lowercase() }
-            }
-            apps.addAll(list)
-        }
+        var query by remember { mutableStateOf("") }
         var chosen by remember { mutableStateOf(cfg.apps) }
+        val shown = allApps.filter { query.isBlank() || it.label.contains(query.trim(), ignoreCase = true) }
         ModalBottomSheet(onDismissRequest = { update(cfg.copy(apps = chosen)); sheet = false }) {
-            Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("${chosen.size}/6 selected", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Button(onClick = { update(cfg.copy(apps = chosen)); sheet = false }) { Text("Save") }
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${chosen.size}/$MAX_DOCK in dock", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Button(onClick = { update(cfg.copy(apps = chosen)); sheet = false }) { Text("Done") }
+                }
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it }, singleLine = true,
+                    placeholder = { Text("Search apps") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp),
+                )
             }
-            if (apps.isEmpty()) Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() }
-            LazyColumn(Modifier.fillMaxWidth().height(520.dp)) {
-                items(apps, key = { it.component }) { a ->
+            if (allApps.isEmpty()) Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { ContainedLoadingIndicator() }
+            LazyColumn(Modifier.fillMaxWidth().height(480.dp)) {
+                items(shown, key = { it.component }) { a ->
                     val sel = a.component in chosen
                     ListItem(
                         leadingContent = { Image(a.icon.asImageBitmap(), null, Modifier.size(40.dp)) },
                         headlineContent = { Text(a.label) },
                         trailingContent = { Checkbox(checked = sel, onCheckedChange = null) },
                         modifier = Modifier.clickable {
-                            chosen = if (sel) chosen - a.component else if (chosen.size < 6) chosen + a.component else chosen
+                            chosen = if (sel) chosen - a.component else if (chosen.size < MAX_DOCK) chosen + a.component else chosen
                         },
                     )
                 }
             }
+        }
+    }
+}
+
+private fun <T> List<T>.move(from: Int, to: Int): List<T> {
+    if (to !in indices) return this
+    val m = toMutableList(); val x = m.removeAt(from); m.add(to, x); return m
+}
+
+// ---------------------------------------------------------------- Neue Widgets
+
+@Composable
+private fun CountdownOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
+    var picker by remember { mutableStateOf(false) }
+    Section("Countdown") {
+        OutlinedTextField(
+            value = cfg.countdownTitle, onValueChange = { update(cfg.copy(countdownTitle = it)) },
+            label = { Text("What are you counting down to?") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        )
+        FilledTonalButton(onClick = { picker = true }) {
+            Icon(Icons.Rounded.CalendarMonth, null); Spacer(Modifier.width(8.dp))
+            Text(cfg.countdownEpochDay?.let { java.time.LocalDate.ofEpochDay(it).toString() } ?: "Pick a date")
+        }
+        LabeledSlider("Text size", cfg.textScale, 0.6f..1.3f, pct(cfg.textScale)) { update(cfg.copy(textScale = it)) }
+    }
+    if (picker) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = cfg.countdownEpochDay?.let { it * 86_400_000L } ?: System.currentTimeMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { picker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { update(cfg.copy(countdownEpochDay = Math.floorDiv(it, 86_400_000L))) }
+                    picker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { picker = false }) { Text("Cancel") } },
+        ) { DatePicker(state = state) }
+    }
+}
+
+@Composable
+private fun NoteOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
+    Section("Note") {
+        OutlinedTextField(
+            value = cfg.noteText, onValueChange = { update(cfg.copy(noteText = it)) },
+            label = { Text("Your note") }, minLines = 3,
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        )
+        SwitchRow("Centered", cfg.noteCentered) { update(cfg.copy(noteCentered = it)) }
+        LabeledSlider("Text size", cfg.textScale, 0.6f..1.6f, pct(cfg.textScale)) { update(cfg.copy(textScale = it)) }
+    }
+}
+
+@Composable
+private fun WorldOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val zones = remember { java.util.TimeZone.getAvailableIDs().filter { '/' in it && !it.startsWith("Etc") && !it.startsWith("SystemV") }.sorted() }
+    val shown = remember(query) {
+        if (query.length < 2) emptyList()
+        else zones.filter { it.replace('_', ' ').contains(query.trim(), ignoreCase = true) }.take(12)
+    }
+    Section("World clock", subtitle = "Showing ${de.flexy.widgetwerk.widget.MoreRenderers.cityOf(cfg.zoneId)} (${cfg.zoneId})") {
+        OutlinedTextField(
+            value = query, onValueChange = { query = it }, singleLine = true,
+            label = { Text("Search city / time zone") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        )
+        shown.forEach { z ->
+            ListItem(
+                headlineContent = { Text(de.flexy.widgetwerk.widget.MoreRenderers.cityOf(z)) },
+                supportingContent = { Text(z) },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { update(cfg.copy(zoneId = z, zoneLabel = null)); query = "" },
+            )
+        }
+        OutlinedTextField(
+            value = cfg.zoneLabel ?: "", onValueChange = { update(cfg.copy(zoneLabel = it.ifBlank { null })) },
+            label = { Text("Label (optional, e.g. \"Mum\")") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        )
+        Choices(listOf<Boolean?>(null, false, true), cfg.force24h, { when (it) { null -> "System"; false -> "12 h"; true -> "24 h" } }) {
+            update(cfg.copy(force24h = it))
         }
     }
 }

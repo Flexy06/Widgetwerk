@@ -57,6 +57,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Wallpaper
@@ -422,6 +423,36 @@ private fun GlassScreen(back: () -> Unit) {
                 }
             }
             item { PhonePreview(changes) }
+            if (global.wallpaperMode != WallpaperMode.NONE) item {
+                Section(
+                    "Home screen pages",
+                    subtitle = "If your wallpaper slides when you swipe between pages, the glass can only match one page. " +
+                        "Best fix: lock the wallpaper to the screen size – then it can't slide or wobble anymore and the glass fits everywhere.",
+                ) {
+                    Button(onClick = {
+                        scope.launch {
+                            busy = true
+                            val ok = withContext(Dispatchers.Default) { WallpaperSource.lockAsWallpaper(ctx) }
+                            busy = false
+                            if (ok) { afterChange(); Toast.makeText(ctx, "Wallpaper locked – glass now fits on every page", Toast.LENGTH_LONG).show() }
+                            else Toast.makeText(ctx, "Couldn't set the wallpaper", Toast.LENGTH_SHORT).show()
+                        }
+                    }, enabled = !busy) {
+                        Icon(Icons.Rounded.Lock, null); Spacer(Modifier.width(8.dp)); Text("Lock wallpaper (recommended)")
+                    }
+                    Text("Or keep the sliding wallpaper: tell Widgetwerk how many pages you have, then pick each widget's page in its settings.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    de.flexy.widgetwerk.ui.components.Choices((1..5).toList(), global.pages, { if (it == 1) "No sliding" else "$it pages" }) { n ->
+                        scope.launch {
+                            withContext(Dispatchers.Default) {
+                                ConfigStore.updateGlobal(ctx) { it.copy(pages = n) }
+                                WallpaperSource.reprocess(ctx)
+                            }
+                            afterChange()
+                        }
+                    }
+                }
+            }
             if (global.wallpaperMode != WallpaperMode.NONE) item {
                 Section("Fine-tune", subtitle = "If the glass doesn't line up with your wallpaper, nudge it here.") {
                     LabeledSlider("Zoom", zoom, 1f..1.5f, pct(zoom)) { zoom = it }

@@ -35,7 +35,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         if (hash != ConfigStore.global(ctx).paletteHash) ConfigStore.updateGlobal(ctx) { it.copy(paletteHash = hash) }
 
         // Wetter
-        WidgetRegistry.ids(ctx, WidgetKind.WEATHER).forEach { id ->
+        (WidgetRegistry.ids(ctx, WidgetKind.WEATHER) + WidgetRegistry.ids(ctx, WidgetKind.SUN)).forEach { id ->
             val cfg = ConfigStore.load(ctx, id) ?: return@forEach
             val lat = cfg.lat ?: return@forEach
             val lon = cfg.lon ?: return@forEach

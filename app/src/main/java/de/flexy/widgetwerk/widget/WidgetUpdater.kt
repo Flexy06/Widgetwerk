@@ -91,6 +91,11 @@ object WidgetUpdater {
             WidgetKind.BATTERY -> Renderers.battery(r)
             WidgetKind.MEDIA -> Renderers.media(r)
             WidgetKind.LAUNCHER -> Renderers.launcher(r)
+            WidgetKind.COUNTDOWN -> MoreRenderers.countdown(r)
+            WidgetKind.NOTE -> MoreRenderers.note(r)
+            WidgetKind.WORLD -> MoreRenderers.world(r)
+            WidgetKind.PROGRESS -> MoreRenderers.progress(r)
+            WidgetKind.SUN -> MoreRenderers.sun(r)
         }
     }
 
@@ -99,6 +104,8 @@ object WidgetUpdater {
         WidgetKind.CLOCK, WidgetKind.WEATHER, WidgetKind.MEDIA -> 340f to 170f
         WidgetKind.CALENDAR -> 340f to 260f
         WidgetKind.LAUNCHER -> 340f to 84f
+        WidgetKind.SUN -> 340f to 170f
+        WidgetKind.NOTE, WidgetKind.WORLD -> 250f to 170f
         else -> 165f to 165f
     }
 
@@ -139,20 +146,21 @@ object WidgetUpdater {
             .putExtra(TapActivity.EXTRA_ACTION, action.name)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         // MUTABLE, damit der Launcher die Bildschirmposition (sourceBounds) einfügen kann
-        return PendingIntent.getActivity(ctx, id * 32, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+        return PendingIntent.getActivity(ctx, id * 64, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
     }
 
-    fun actionIntent(ctx: Context, id: Int, action: String, slot: Int): PendingIntent {
+    fun actionIntent(ctx: Context, id: Int, action: String, slot: Int, configure: (Intent) -> Unit = {}): PendingIntent {
         val i = Intent(ctx, ActionReceiver::class.java)
             .setAction(action)
-            .setData(Uri.parse("widgetwerk://action/$id/$action"))
+            .setData(Uri.parse("widgetwerk://action/$id/$action/$slot"))
             .putExtra(TapActivity.EXTRA_ID, id)
-        return PendingIntent.getBroadcast(ctx, id * 32 + slot, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        configure(i)
+        return PendingIntent.getBroadcast(ctx, id * 64 + slot, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     fun activityIntent(ctx: Context, id: Int, slot: Int, intent: Intent): PendingIntent =
         PendingIntent.getActivity(
-            ctx, id * 32 + slot, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            ctx, id * 64 + slot, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 }

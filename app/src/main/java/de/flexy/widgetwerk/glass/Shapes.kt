@@ -36,6 +36,12 @@ object Shapes {
                 val bottom = min(cornerPx, top)
                 p.addRoundRect(rect, floatArrayOf(top, top, top, top, bottom, bottom, bottom, bottom), Path.Direction.CW)
             }
+            ShapeKind.ARCH_DOWN -> {
+                // Bogen nach unten
+                val round = min(rect.width(), rect.height()) / 2f
+                val top = min(cornerPx, round)
+                p.addRoundRect(rect, floatArrayOf(top, top, top, top, round, round, round, round), Path.Direction.CW)
+            }
             else -> polar(kind, square(rect), p)
         }
         return p

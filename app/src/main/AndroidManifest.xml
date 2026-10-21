@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- "Wallpaper fixieren": Bild exakt bildschirmgroß setzen (keine Parallaxe beim Seitenwechsel) -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- Nur nötig, um das System-Hintergrundbild direkt zu lesen (optional, sonst Bild auswählen) -->
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -115,6 +117,26 @@
         <receiver android:name=".widget.LauncherWidget" android:exported="false" android:label="App dock">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_launcher" />
+        </receiver>
+        <receiver android:name=".widget.CountdownWidget" android:exported="false" android:label="Countdown">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_countdown" />
+        </receiver>
+        <receiver android:name=".widget.NoteWidget" android:exported="false" android:label="Note">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_note" />
+        </receiver>
+        <receiver android:name=".widget.WorldWidget" android:exported="false" android:label="World clock">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_world" />
+        </receiver>
+        <receiver android:name=".widget.ProgressWidget" android:exported="false" android:label="Time progress">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_progress" />
+        </receiver>
+        <receiver android:name=".widget.SunWidget" android:exported="false" android:label="Sun &amp; moon">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_sun" />
         </receiver>
     </application>
 </manifest>

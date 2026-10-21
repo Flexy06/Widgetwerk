@@ -59,6 +59,25 @@ class LiveService : NotificationListenerService() {
         }
     }
 
+    // Fortschrittsbalken: alle 5 s neu zeichnen, solange Musik läuft und der Bildschirm an ist
+    private var screenOn = true
+    private val tick = object : Runnable {
+        override fun run() {
+            if (!screenOn || !MediaHelper.isPlaying(MediaHelper.active(this@LiveService))) return
+            if (WidgetRegistry.ids(applicationContext, WidgetKind.MEDIA).isEmpty()) return
+            mediaChanged()
+            main.postDelayed(this, 5_000)
+        }
+    }
+    private fun restartTick() { main.removeCallbacks(tick); main.postDelayed(tick, 5_000) }
+
+    private val screen = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            screenOn = i.action == Intent.ACTION_SCREEN_ON
+            if (screenOn) { mediaChanged(); restartTick() } else main.removeCallbacks(tick)
+        }
+    }
+
     private val colors = WallpaperManager.OnColorsChangedListener { _, which ->
         if (which and WallpaperManager.FLAG_SYSTEM != 0) themeChanged(wallpaper = true)
     }
@@ -72,6 +91,8 @@ class LiveService : NotificationListenerService() {
             attach(sessions?.getActiveSessions(me) ?: emptyList())
         }
         registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        registerReceiver(screen, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) })
+        restartTick()
         runCatching { WallpaperManager.getInstance(this).addOnColorsChangedListener(colors, main) }
         mediaChanged()
     }
@@ -88,6 +109,8 @@ class LiveService : NotificationListenerService() {
         callbacks.forEach { (c, cb) -> runCatching { c.unregisterCallback(cb) } }
         callbacks.clear()
         runCatching { unregisterReceiver(battery) }
+        runCatching { unregisterReceiver(screen) }
+        main.removeCallbacks(tick)
         runCatching { WallpaperManager.getInstance(this).removeOnColorsChangedListener(colors) }
     }
 
@@ -96,7 +119,7 @@ class LiveService : NotificationListenerService() {
         callbacks.clear()
         list.forEach { c ->
             val cb = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) = mediaChanged()
+                override fun onPlaybackStateChanged(state: PlaybackState?) { mediaChanged(); restartTick() }
                 override fun onMetadataChanged(metadata: MediaMetadata?) = mediaChanged()
                 override fun onSessionDestroyed() = mediaChanged()
             }

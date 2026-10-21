@@ -5,6 +5,7 @@
     <string name="previous">Previous</string>
     <string name="next">Next</string>
     <string name="play_pause">Play/pause</string>
+    <string name="player_action">Player action</string>
     <string name="media_listener">Widgetwerk live updates</string>
     <string name="desc_clock">Big expressive digital clock on glass</string>
     <string name="desc_analog">Shaped analog clock</string>
@@ -17,4 +18,9 @@
     <string name="desc_battery">Battery with wavy ring</string>
     <string name="desc_media">Now playing with controls</string>
     <string name="desc_launcher">Favourite apps on a glass dock</string>
+    <string name="desc_countdown">Days until (or since) a date</string>
+    <string name="desc_note">A sticky note on glass</string>
+    <string name="desc_world">The time in another city</string>
+    <string name="desc_progress">How much of the day, week, month and year is done</string>
+    <string name="desc_sun">Daylight arc, sunrise, sunset and moon phase</string>
 </resources>

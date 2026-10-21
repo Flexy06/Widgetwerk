@@ -39,6 +39,9 @@ data class WeatherData(
     val humidity: Int,
     val wind: Double,
     val hours: List<HourPoint>,
+    val sunrise: Long = 0,     // Unix-Sekunden (heute)
+    val sunset: Long = 0,
+    val sunriseTomorrow: Long = 0,
 )
 
 @Serializable
@@ -63,7 +66,7 @@ object WeatherRepo {
         val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
             "&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m,wind_speed_10m" +
             "&hourly=temperature_2m,weather_code,is_day" +
-            "&daily=temperature_2m_max,temperature_2m_min" +
+            "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset" +
             "&timezone=auto&timeformat=unixtime&forecast_days=2"
         val root = ConfigStore.json.parseToJsonElement(get(url)).jsonObject
         val cur = root["current"]!!.jsonObject
@@ -96,6 +99,9 @@ object WeatherRepo {
             humidity = cur.num("relative_humidity_2m").toInt(),
             wind = cur.num("wind_speed_10m"),
             hours = hours,
+            sunrise = (daily["sunrise"] as JsonArray)[0].jsonPrimitive.content.toLong(),
+            sunset = (daily["sunset"] as JsonArray)[0].jsonPrimitive.content.toLong(),
+            sunriseTomorrow = (daily["sunrise"] as JsonArray).getOrNull(1)?.jsonPrimitive?.content?.toLong() ?: 0,
         )
     }
 

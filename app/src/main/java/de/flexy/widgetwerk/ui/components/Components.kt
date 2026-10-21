@@ -93,7 +93,7 @@ fun WidgetPreview(
             val geo = WidgetUpdater.previewGeometry(ctx, id, kind)
             val views = runCatching { WidgetUpdater.build(ctx, id ?: -1, kind, cfg, geo, preview = true) }.getOrNull()
             val m = (backdropMarginDp * geo.density).roundToInt()
-            PreviewData(views, geo, backdrop(ctx, geo, m), m, System.nanoTime())
+            PreviewData(views, geo, backdrop(ctx, geo, m, cfg.page), m, System.nanoTime())
         }
     }
     val d = data
@@ -141,15 +141,12 @@ fun WidgetPreview(
 }
 
 /** Ausschnitt des Wallpapers rund um die Widget-Position. */
-private fun backdrop(ctx: android.content.Context, geo: WidgetGeometry, margin: Int): Bitmap? {
+private fun backdrop(ctx: android.content.Context, geo: WidgetGeometry, margin: Int, page: Int): Bitmap? {
     val wall = WallpaperSource.get(ctx) ?: return null
     val k = WallpaperSource.cacheScale(ctx, wall)
-    val b = geo.screenBounds ?: run {
-        val (sw, sh) = WallpaperSource.screenSize(ctx)
-        val l = (sw - geo.widthPx) / 2; val t = (sh * 0.55f - geo.heightPx / 2f).toInt()
-        Rect(l, t, l + geo.widthPx, t + geo.heightPx)
-    }
-    val r = Rect(((b.left - margin) * k).toInt(), ((b.top - margin) * k).toInt(), ((b.right + margin) * k).toInt(), ((b.bottom + margin) * k).toInt())
+    val f = WallpaperSource.regionFor(ctx, wall, de.flexy.widgetwerk.glass.SurfaceRenderer.screenRect(ctx, geo), page)
+    val m = margin * k
+    val r = Rect((f.left - m).toInt(), (f.top - m).toInt(), (f.right + m).toInt(), (f.bottom + m).toInt())
     if (!r.intersect(0, 0, wall.width, wall.height) || r.width() < 2 || r.height() < 2) return null
     return Bitmap.createBitmap(wall, r.left, r.top, r.width(), r.height())
 }

@@ -14,8 +14,13 @@ Material 3 Expressive widget pack for Android 12+ (built for the Pixel 8 Pro) wi
 | Shapes | Pure decoration: shape, orbs, stacked shapes, waves, dots, rings – tap to shuffle |
 | Calendar | Next events from the phone's calendars |
 | Battery | Wavy M3-Expressive charge ring, time-to-full, temperature |
-| Now playing | Artwork, title, controls; artwork-blur background |
-| App dock | Up to 6 apps, themed (monochrome) icons, optional date |
+| Now playing | Artwork, title, controls, wavy progress bar (tap to seek), live elapsed time, player buttons like Spotify's ♥ |
+| App dock | Up to 8 apps, search & reorder, forced themed icons (generated for apps without one), labels, date |
+| Countdown | Days until / since a date |
+| Note | Sticky note on glass |
+| World clock | Live time in another time zone with offset |
+| Time progress | Day, week, month and year as rings or wavy bars |
+| Sun & moon | Daylight arc with sun position, sunrise/sunset, moon phase |
 
 ## How the glass works
 Widgets can't blur what's behind them. Widgetwerk keeps a screen-sized copy of the wallpaper
@@ -24,6 +29,10 @@ widget and blurs it. The position comes from `Intent.sourceBounds`, which the la
 you tap a widget (mutable PendingIntent → `TapActivity`). So: tap a glass widget once after
 placing or moving it. Without a wallpaper source the widgets fall back to milky glass made from
 the dynamic colors.
+
+If the launcher slides the wallpaper between home screen pages (parallax), the glass can only match one
+page. Fix: **Lock wallpaper** in the app (sets the image exactly screen-sized → no sliding, no wobble), or
+set the number of pages and choose each widget's page.
 
 ## Releases
 Every push to `main` (or a manual run of **Build & Release APK** in the Actions tab) builds a signed
