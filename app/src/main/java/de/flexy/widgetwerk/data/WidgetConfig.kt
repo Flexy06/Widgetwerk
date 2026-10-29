@@ -21,6 +21,12 @@ enum class WidgetKind(val title: String, val subtitle: String) {
     WORLD("World clock", "The time somewhere else"),
     PROGRESS("Time progress", "Day, week, month & year"),
     SUN("Sun & moon", "Daylight arc and moon phase"),
+    GLANCE("At a glance", "Date, weather and what's next"),
+    MONTH("Month", "Calendar month with event dots"),
+    TORCH("Flashlight", "One tap torch"),
+    STORAGE("Storage", "How full your phone is"),
+    TIMER("Timer", "Start a timer with one tap"),
+    COUNTER("Counter", "Count anything – water, coffee, push-ups"),
 }
 
 /** Hintergrund-Material des Widgets. */
@@ -110,6 +116,8 @@ data class WidgetConfig(
     val force24h: Boolean? = null,     // null = Systemeinstellung
     val showSeconds: Boolean = false,
     val dateStyle: DateStyle = DateStyle.SHAPE,
+    val clockAlarm: Boolean = false,          // nächsten Wecker unter der Uhr zeigen
+    val clockWeather: Boolean = false,        // Kurz-Wetter unter der Uhr zeigen
     val textScale: Float = 1f,
     // --- Wetter ---
     val lat: Double? = null,
@@ -149,6 +157,14 @@ data class WidgetConfig(
     val zoneLabel: String? = null,
     // --- Fortschritt ---
     val progressStyle: ProgressStyle = ProgressStyle.RINGS,
+    // --- Timer ---
+    val timerPresets: List<Int> = listOf(5, 10, 25),   // Minuten
+    // --- Zähler ---
+    val counterLabel: String = "Water",
+    val counterValue: Int = 0,
+    val counterGoal: Int = 8,
+    val counterDaily: Boolean = true,          // täglich zurücksetzen
+    val counterDay: Long = 0,                  // Epoch-Tag des Zählerstands
 ) {
     companion object {
         /** Sinnvolle Startwerte je Widget-Art. */
@@ -169,6 +185,12 @@ data class WidgetConfig(
             WidgetKind.WORLD -> WidgetConfig(kind, cornerDp = 32f)
             WidgetKind.PROGRESS -> WidgetConfig(kind, shape = ShapeKind.ROUNDED, cornerDp = 36f)
             WidgetKind.SUN -> WidgetConfig(kind, cornerDp = 32f)
+            WidgetKind.GLANCE -> WidgetConfig(kind, surface = Surface.NONE)
+            WidgetKind.MONTH -> WidgetConfig(kind, cornerDp = 32f)
+            WidgetKind.TORCH -> WidgetConfig(kind, shape = ShapeKind.COOKIE9, surface = Surface.GLASS)
+            WidgetKind.STORAGE -> WidgetConfig(kind, cornerDp = 36f)
+            WidgetKind.TIMER -> WidgetConfig(kind, shape = ShapeKind.PILL)
+            WidgetKind.COUNTER -> WidgetConfig(kind, cornerDp = 36f, colorRole = ColorRole.SECONDARY)
         }
     }
 }

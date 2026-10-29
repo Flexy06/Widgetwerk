@@ -17,11 +17,27 @@ class ActionReceiver : BroadcastReceiver() {
         const val SEEK = "de.flexy.widgetwerk.SEEK"
         const val CUSTOM = "de.flexy.widgetwerk.CUSTOM"
         const val FLASH = "de.flexy.widgetwerk.FLASH"
+        const val COUNT = "de.flexy.widgetwerk.COUNT"
+        const val EXTRA_DELTA = "delta"
         const val EXTRA_FRACTION = "fraction"
         const val EXTRA_CUSTOM = "custom_action"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getIntExtra(TapActivity.EXTRA_ID, -1)
+        when (intent.action) {
+            FLASH -> { Gadgets.toggleTorch(context); WidgetUpdater.requestKind(context, WidgetKind.TORCH); return }
+            COUNT -> {
+                de.flexy.widgetwerk.data.ConfigStore.load(context, id)?.let { c0 ->
+                    val today = java.time.LocalDate.now().toEpochDay()
+                    val c = if (c0.counterDaily && c0.counterDay != today) c0.copy(counterValue = 0, counterDay = today) else c0
+                    val v = (c.counterValue + intent.getIntExtra(EXTRA_DELTA, 1)).coerceIn(0, 9999)
+                    de.flexy.widgetwerk.data.ConfigStore.save(context, id, c.copy(counterValue = v, counterDay = today))
+                }
+                WidgetUpdater.request(context, id)
+                return
+            }
+        }
         val c = MediaHelper.active(context)
         val t = c?.transportControls
         when (intent.action) {

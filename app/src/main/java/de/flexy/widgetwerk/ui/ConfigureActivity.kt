@@ -151,7 +151,7 @@ private val rectShapes = listOf(ShapeKind.ROUNDED, ShapeKind.PILL, ShapeKind.ARC
 
 private fun shapesFor(kind: WidgetKind) = when (kind) {
     WidgetKind.ANALOG, WidgetKind.DATE, WidgetKind.PHOTO, WidgetKind.GLASS, WidgetKind.DECO, WidgetKind.BATTERY,
-    WidgetKind.COUNTDOWN, WidgetKind.PROGRESS -> ShapeKind.entries.toList()
+    WidgetKind.COUNTDOWN, WidgetKind.PROGRESS, WidgetKind.TORCH, WidgetKind.STORAGE -> ShapeKind.entries.toList()
     else -> rectShapes
 }
 
@@ -186,7 +186,10 @@ private fun ConfigScreen(id: Int, kind: WidgetKind, onDone: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 when (kind) {
-                    WidgetKind.CLOCK -> ClockOptions(cfg, update)
+                    WidgetKind.CLOCK -> {
+                        ClockOptions(cfg, update)
+                        if (cfg.clockWeather) WeatherOptions(id, cfg, update, weatherExtras = false)
+                    }
                     WidgetKind.ANALOG -> Section("Clock") {
                         SwitchRow("Second hand", cfg.showSeconds, "Uses a little more battery") { update(cfg.copy(showSeconds = it)) }
                     }
@@ -212,7 +215,11 @@ private fun ConfigScreen(id: Int, kind: WidgetKind, onDone: () -> Unit) {
                         Choices(ProgressStyle.entries, cfg.progressStyle, { it.label }) { update(cfg.copy(progressStyle = it)) }
                     }
                     WidgetKind.SUN -> WeatherOptions(id, cfg, update, weatherExtras = false)
-                    WidgetKind.BATTERY, WidgetKind.GLASS -> Unit
+                    WidgetKind.GLANCE -> WeatherOptions(id, cfg, update, weatherExtras = false)
+                    WidgetKind.TIMER -> TimerOptions(cfg, update)
+                    WidgetKind.COUNTER -> CounterOptions(cfg, update)
+                    WidgetKind.MONTH -> CalendarAccessHint()
+                    WidgetKind.BATTERY, WidgetKind.GLASS, WidgetKind.TORCH, WidgetKind.STORAGE -> Unit
                 }
                 MaterialOptions(kind, cfg, update)
                 ApplyToAll(id, cfg)
@@ -307,6 +314,10 @@ private fun ClockOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
             update(cfg.copy(force24h = it))
         }
         if (cfg.clockStyle != ClockStyle.MINIMAL) SwitchRow("Show date", cfg.showDate) { update(cfg.copy(showDate = it)) }
+        SwitchRow("Next alarm", cfg.clockAlarm, "Shows your next alarm from the clock app") { update(cfg.copy(clockAlarm = it)) }
+        SwitchRow("Weather", cfg.clockWeather, "Temperature and condition under the clock – pick a location below") {
+            update(cfg.copy(clockWeather = it))
+        }
         LabeledSlider("Size", cfg.textScale, 0.6f..1.2f, pct(cfg.textScale)) { update(cfg.copy(textScale = it)) }
     }
 }
@@ -662,6 +673,59 @@ private fun WorldOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
         )
         Choices(listOf<Boolean?>(null, false, true), cfg.force24h, { when (it) { null -> "System"; false -> "12 h"; true -> "24 h" } }) {
             update(cfg.copy(force24h = it))
+        }
+    }
+}
+
+// ---------------------------------------------------------------- Timer / Zähler / Monat
+
+@Composable
+private fun TimerOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
+    val all = listOf(1, 3, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120)
+    Section("Timer buttons", subtitle = "Pick up to 5. Tapping one starts the timer in your clock app.") {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            all.forEach { m ->
+                val sel = m in cfg.timerPresets
+                androidx.compose.material3.FilterChip(
+                    selected = sel,
+                    onClick = {
+                        val next = if (sel) cfg.timerPresets - m else if (cfg.timerPresets.size < 5) (cfg.timerPresets + m).sorted() else cfg.timerPresets
+                        if (next.isNotEmpty()) update(cfg.copy(timerPresets = next))
+                    },
+                    label = { Text(if (m >= 60 && m % 60 == 0) "${m / 60} h" else "$m min") },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CounterOptions(cfg: WidgetConfig, update: (WidgetConfig) -> Unit) {
+    Section("Counter") {
+        OutlinedTextField(
+            value = cfg.counterLabel, onValueChange = { update(cfg.copy(counterLabel = it)) },
+            label = { Text("What do you count?") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        )
+        LabeledSlider("Daily goal", cfg.counterGoal.toFloat(), 0f..30f, if (cfg.counterGoal == 0) "none" else "${cfg.counterGoal}") {
+            update(cfg.copy(counterGoal = it.roundToInt()))
+        }
+        SwitchRow("Reset every day", cfg.counterDaily, "Starts at 0 each morning") { update(cfg.copy(counterDaily = it)) }
+        TextButton(onClick = { update(cfg.copy(counterValue = 0, counterDay = java.time.LocalDate.now().toEpochDay())) }) { Text("Reset now") }
+    }
+}
+
+@Composable
+private fun CalendarAccessHint() {
+    val ctx = LocalContext.current
+    var granted by remember { mutableStateOf(CalendarRepo.hasPermission(ctx)) }
+    val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        granted = ok
+        if (ok) WidgetUpdater.requestKind(ctx, WidgetKind.MONTH)
+    }
+    if (!granted) Section("Event dots", subtitle = "Allow calendar access to see dots on days with events.") {
+        Button(onClick = { perm.launch(Manifest.permission.READ_CALENDAR) }) {
+            Icon(Icons.Rounded.CalendarMonth, null); Spacer(Modifier.width(8.dp)); Text("Allow calendar access")
         }
     }
 }

@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- "Wallpaper fixieren": Bild exakt bildschirmgroß setzen (keine Parallaxe beim Seitenwechsel) -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Timer-Widget: Timer in der Uhr-App starten -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- Nur nötig, um das System-Hintergrundbild direkt zu lesen (optional, sonst Bild auswählen) -->
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -137,6 +139,34 @@
         <receiver android:name=".widget.SunWidget" android:exported="false" android:label="Sun &amp; moon">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_sun" />
+        </receiver>
+        <receiver android:name=".widget.GlanceWidget" android:exported="false" android:label="At a glance">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_glance" />
+        </receiver>
+        <receiver android:name=".widget.MonthWidget" android:exported="false" android:label="Month">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_month" />
+        </receiver>
+        <receiver android:name=".widget.TorchWidget" android:exported="false" android:label="Flashlight">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_torch" />
+        </receiver>
+        <receiver android:name=".widget.StorageWidget" android:exported="false" android:label="Storage">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_storage" />
+        </receiver>
+        <receiver android:name=".widget.TimerWidget" android:exported="false" android:label="Timer">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_timer" />
+        </receiver>
+        <receiver android:name=".widget.CounterWidget" android:exported="false" android:label="Counter">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_counter" />
+        </receiver>
+        <!-- Nächster Wecker geändert → Uhr / At a glance aktualisieren (geschützter System-Broadcast) -->
+        <receiver android:name=".widget.AlarmChangedReceiver" android:exported="true">
+            <intent-filter><action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" /></intent-filter>
         </receiver>
     </application>
 </manifest>

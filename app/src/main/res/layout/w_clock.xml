@@ -30,5 +30,24 @@
             android:format12Hour="EEEE, d MMMM"
             android:format24Hour="EEEE, d MMMM"
             android:textSize="16sp" />
+        <!-- Optional: Kurz-Wetter und nächster Wecker -->
+        <LinearLayout
+            android:id="@+id/extras"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+            <ImageView android:id="@+id/wx_icon" android:layout_width="20dp" android:layout_height="20dp"
+                android:layout_marginEnd="4dp" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/wx_text" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="google-sans" android:textFontWeight="600" android:maxLines="1" android:textSize="14sp" />
+            <ImageView android:id="@+id/alarm_icon" android:layout_width="16dp" android:layout_height="16dp"
+                android:layout_marginStart="14dp" android:layout_marginEnd="4dp" android:src="@drawable/ic_alarm"
+                android:importantForAccessibility="no" />
+            <TextView android:id="@+id/alarm_text" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:fontFamily="google-sans" android:textFontWeight="600" android:maxLines="1" android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

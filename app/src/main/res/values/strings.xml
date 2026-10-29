@@ -23,4 +23,14 @@
     <string name="desc_world">The time in another city</string>
     <string name="desc_progress">How much of the day, week, month and year is done</string>
     <string name="desc_sun">Daylight arc, sunrise, sunset and moon phase</string>
+    <string name="flashlight">Flashlight</string>
+    <string name="timer">Timer</string>
+    <string name="minus">Minus one</string>
+    <string name="plus">Plus one</string>
+    <string name="desc_glance">Date, weather and your next event or alarm</string>
+    <string name="desc_month">This month with event dots</string>
+    <string name="desc_torch">Turn the flashlight on and off</string>
+    <string name="desc_storage">How full your phone storage is</string>
+    <string name="desc_timer">Start a timer with one tap</string>
+    <string name="desc_counter">Count anything, resets daily if you like</string>
 </resources>

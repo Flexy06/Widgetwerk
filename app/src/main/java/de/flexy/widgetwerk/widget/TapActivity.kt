@@ -96,6 +96,12 @@ class TapActivity : Activity() {
                         packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                     }
                 }
+                TapAction.TORCH -> {
+                    if (!Gadgets.toggleTorch(this)) Toast.makeText(this, "No flashlight found", Toast.LENGTH_SHORT).show()
+                    WidgetUpdater.requestKind(this, de.flexy.widgetwerk.data.WidgetKind.TORCH)
+                }
+                TapAction.STORAGE -> startActivity(Intent(android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                TapAction.TIMERS -> startActivity(Intent(AlarmClock.ACTION_SHOW_TIMERS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 TapAction.CONFIGURE -> startActivity(
                     Intent(this, ConfigureActivity::class.java)
                         .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)

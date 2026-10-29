@@ -88,7 +88,13 @@ object Renderers {
 
         val pad = r.dp(24f)
         val showDate = cfg.showDate && cfg.clockStyle != ClockStyle.MINIMAL
-        val w = r.geo.widthPx - pad; val h = r.geo.heightPx - pad
+        // Zusatzzeile: Kurz-Wetter und/oder nächster Wecker
+        val wx = if (cfg.clockWeather && r.id >= 0) ConfigStore.weather(r.ctx, r.id) else null
+        val alarm = if (cfg.clockAlarm) Gadgets.nextAlarm(r.ctx) else null
+        val showWx = cfg.clockWeather && (wx != null || cfg.lat == null)
+        val extrasOn = (showWx || alarm != null) && r.hDp >= 100
+        val extrasPx = if (extrasOn) r.dp(26f) else 0f
+        val w = r.geo.widthPx - pad; val h = r.geo.heightPx - pad - extrasPx
         val fontWidth = when (cfg.font) { ClockFont.CONDENSED -> 0.5f; ClockFont.MONO -> 0.62f; ClockFont.BOLD -> 0.64f; else -> 0.58f }
 
         when (cfg.clockStyle) {
@@ -128,6 +134,30 @@ object Renderers {
         val datePattern = pattern(if (r.wDp < 200) "EEEdMMM" else "EEEEdMMMM")
         v.formats(R.id.date, datePattern, datePattern, null)
         v.setTextColor(R.id.date, if (cfg.clockStyle == ClockStyle.STACKED) bg.textSecondary else bg.accent)
+        v.visible(R.id.extras, extrasOn)
+        if (extrasOn) {
+            val ts = r.dp(14f) * cfg.textScale.coerceIn(0.8f, 1.2f)
+            v.visible(R.id.wx_icon, wx != null)
+            v.visible(R.id.wx_text, showWx)
+            if (wx != null) {
+                val t = if (cfg.fahrenheit) (wx.temp * 9 / 5 + 32).roundToInt() else wx.temp.roundToInt()
+                val hi = if (cfg.fahrenheit) (wx.high * 9 / 5 + 32).roundToInt() else wx.high.roundToInt()
+                val lo = if (cfg.fahrenheit) (wx.low * 9 / 5 + 32).roundToInt() else wx.low.roundToInt()
+                v.setImageViewBitmap(R.id.wx_icon, Art.weatherIcon(wx.code, wx.isDay, r.dp(20f).roundToInt(), bg.light))
+                v.setTextViewText(R.id.wx_text, if (r.wDp >= 220) "$t° · ${WeatherRepo.describe(wx.code)} · $hi°/$lo°" else "$t°")
+            } else if (showWx) v.setTextViewText(R.id.wx_text, "Set location")
+            v.setTextColor(R.id.wx_text, bg.text)
+            v.textPx(R.id.wx_text, ts)
+            v.visible(R.id.alarm_icon, alarm != null)
+            v.visible(R.id.alarm_text, alarm != null)
+            if (alarm != null) {
+                v.setTextViewText(R.id.alarm_text, alarm)
+                v.setTextColor(R.id.alarm_text, bg.text)
+                v.textPx(R.id.alarm_text, ts)
+                v.tint(R.id.alarm_icon, bg.accent)
+                v.setViewLayoutMargin(R.id.alarm_icon, RemoteViews.MARGIN_START, if (showWx) 14f else 0f, TypedValue.COMPLEX_UNIT_DIP)
+            }
+        }
         v.tap(r, TapAction.ALARMS)
         return v
     }

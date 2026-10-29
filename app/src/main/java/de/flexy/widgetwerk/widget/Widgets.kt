@@ -61,6 +61,20 @@ class NoteWidget : BaseWidget(WidgetKind.NOTE)
 class WorldWidget : BaseWidget(WidgetKind.WORLD)
 class ProgressWidget : BaseWidget(WidgetKind.PROGRESS)
 class SunWidget : BaseWidget(WidgetKind.SUN)
+class GlanceWidget : BaseWidget(WidgetKind.GLANCE)
+class MonthWidget : BaseWidget(WidgetKind.MONTH)
+class TorchWidget : BaseWidget(WidgetKind.TORCH)
+class StorageWidget : BaseWidget(WidgetKind.STORAGE)
+class TimerWidget : BaseWidget(WidgetKind.TIMER)
+class CounterWidget : BaseWidget(WidgetKind.COUNTER)
+
+/** Nächster Wecker geändert → Uhren und "At a glance" neu zeichnen. */
+class AlarmChangedReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: android.content.Intent) {
+        WidgetUpdater.requestKind(context, WidgetKind.CLOCK)
+        WidgetUpdater.requestKind(context, WidgetKind.GLANCE)
+    }
+}
 
 /** Zuordnung Widget-Art ↔ Provider-Klasse. */
 object WidgetRegistry {
@@ -81,6 +95,12 @@ object WidgetRegistry {
         WidgetKind.WORLD -> WorldWidget::class.java
         WidgetKind.PROGRESS -> ProgressWidget::class.java
         WidgetKind.SUN -> SunWidget::class.java
+        WidgetKind.GLANCE -> GlanceWidget::class.java
+        WidgetKind.MONTH -> MonthWidget::class.java
+        WidgetKind.TORCH -> TorchWidget::class.java
+        WidgetKind.STORAGE -> StorageWidget::class.java
+        WidgetKind.TIMER -> TimerWidget::class.java
+        WidgetKind.COUNTER -> CounterWidget::class.java
     }
 
     fun component(ctx: Context, kind: WidgetKind) = ComponentName(ctx, providerClass(kind))

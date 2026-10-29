@@ -5,7 +5,7 @@ Material 3 Expressive widget pack for Android 12+ (built for the Pixel 8 Pro) wi
 ## Widgets
 | Widget | What it does |
 |---|---|
-| Clock | Big digital clock (stacked / one line / time only), 7 fonts, live via `TextClock` |
+| Clock | Optional next alarm and short weather line; big digital clock (stacked / one line / time only), 7 fonts, live via `TextClock` |
 | Analog clock | Expressive dial shapes, bold hands, optional second hand (`AnalogClock` + `setIcon`) |
 | Date | Day & date in a cookie/sunny/… shape or as headline |
 | Weather | Open-Meteo (no API key), current + hourly, own expressive weather icons |
@@ -21,6 +21,12 @@ Material 3 Expressive widget pack for Android 12+ (built for the Pixel 8 Pro) wi
 | World clock | Live time in another time zone with offset |
 | Time progress | Day, week, month and year as rings or wavy bars |
 | Sun & moon | Daylight arc with sun position, sunrise/sunset, moon phase |
+| At a glance | Pixel-style: date, weather, next event or alarm |
+| Month | Month grid, today in a cookie shape, dots on days with events |
+| Flashlight | One-tap torch, glows when on |
+| Storage | Wavy ring with free / total storage |
+| Timer | Up to 5 preset buttons, starts the timer in the clock app |
+| Counter | Count anything (+/−), daily goal ring, optional daily reset |
 
 ## How the glass works
 Widgets can't blur what's behind them. Widgetwerk keeps a screen-sized copy of the wallpaper

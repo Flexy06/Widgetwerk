@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tm_cell"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1">
+    <ImageView android:id="@+id/tm_shape" android:layout_width="52dp" android:layout_height="52dp"
+        android:layout_gravity="center" android:importantForAccessibility="no" />
+    <TextView android:id="@+id/tm_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center" android:fontFamily="google-sans" android:textFontWeight="600"
+        android:maxLines="1" android:textSize="15sp" />
+</FrameLayout>

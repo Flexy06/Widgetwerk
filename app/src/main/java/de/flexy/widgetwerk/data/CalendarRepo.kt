@@ -84,4 +84,24 @@ object CalendarRepo {
         val time = if (e.allDay) "All day" else "${tf.format(Date(e.begin))} – ${tf.format(Date(e.end))}"
         return "$day · $time"
     }
+
+    /** Tage (lokal) im Bereich, an denen mindestens ein Termin liegt – für Punkte im Monatswidget. */
+    fun eventDays(ctx: Context, fromMillis: Long, toMillis: Long): Set<java.time.LocalDate> {
+        if (!hasPermission(ctx)) return emptySet()
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, fromMillis); ContentUris.appendId(it, toMillis)
+        }.build()
+        val out = mutableSetOf<java.time.LocalDate>()
+        val zone = java.time.ZoneId.systemDefault()
+        runCatching {
+            ctx.contentResolver.query(uri, arrayOf(CalendarContract.Instances.BEGIN, CalendarContract.Instances.ALL_DAY),
+                "${CalendarContract.Instances.VISIBLE} = 1", null, null)?.use { c ->
+                while (c.moveToNext()) {
+                    val begin = if (c.getInt(1) == 1) utcDayToLocal(c.getLong(0)) else c.getLong(0)
+                    out += java.time.Instant.ofEpochMilli(begin).atZone(zone).toLocalDate()
+                }
+            }
+        }
+        return out
+    }
 }

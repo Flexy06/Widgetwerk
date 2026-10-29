@@ -38,7 +38,7 @@ class RenderCtx(
 }
 
 /** Was beim Tippen auf ein Widget passiert. */
-enum class TapAction { ALIGN, ALARMS, CALENDAR, WEATHER_REFRESH, PHOTO_NEXT, DECO_SHUFFLE, BATTERY, MEDIA_OPEN, CONFIGURE }
+enum class TapAction { ALIGN, ALARMS, CALENDAR, WEATHER_REFRESH, PHOTO_NEXT, DECO_SHUFFLE, BATTERY, MEDIA_OPEN, CONFIGURE, TORCH, STORAGE, TIMERS }
 
 object WidgetUpdater {
     private const val TAG = "Widgetwerk"
@@ -96,6 +96,12 @@ object WidgetUpdater {
             WidgetKind.WORLD -> MoreRenderers.world(r)
             WidgetKind.PROGRESS -> MoreRenderers.progress(r)
             WidgetKind.SUN -> MoreRenderers.sun(r)
+            WidgetKind.GLANCE -> GadgetRenderers.glance(r)
+            WidgetKind.MONTH -> GadgetRenderers.month(r)
+            WidgetKind.TORCH -> GadgetRenderers.torch(r)
+            WidgetKind.STORAGE -> GadgetRenderers.storage(r)
+            WidgetKind.TIMER -> GadgetRenderers.timer(r)
+            WidgetKind.COUNTER -> GadgetRenderers.counter(r)
         }
     }
 
@@ -104,7 +110,11 @@ object WidgetUpdater {
         WidgetKind.CLOCK, WidgetKind.WEATHER, WidgetKind.MEDIA -> 340f to 170f
         WidgetKind.CALENDAR -> 340f to 260f
         WidgetKind.LAUNCHER -> 340f to 84f
-        WidgetKind.SUN -> 340f to 170f
+        WidgetKind.SUN, WidgetKind.GLANCE -> 340f to 170f
+        WidgetKind.MONTH -> 250f to 260f
+        WidgetKind.TORCH -> 84f to 84f
+        WidgetKind.TIMER -> 340f to 84f
+        WidgetKind.COUNTER -> 250f to 170f
         WidgetKind.NOTE, WidgetKind.WORLD -> 250f to 170f
         else -> 165f to 165f
     }

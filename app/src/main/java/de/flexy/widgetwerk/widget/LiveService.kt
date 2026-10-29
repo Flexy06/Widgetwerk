@@ -78,6 +78,16 @@ class LiveService : NotificationListenerService() {
         }
     }
 
+    // Taschenlampe: echten Zustand verfolgen (auch wenn sie über die Schnelleinstellungen geschaltet wird)
+    private val torchCb = object : android.hardware.camera2.CameraManager.TorchCallback() {
+        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+            if (cameraId != Gadgets.torchCamera(applicationContext)) return
+            if (Gadgets.torchOn(applicationContext) == enabled) return
+            Gadgets.setTorchState(applicationContext, enabled)
+            WidgetUpdater.requestKind(applicationContext, WidgetKind.TORCH)
+        }
+    }
+
     private val colors = WallpaperManager.OnColorsChangedListener { _, which ->
         if (which and WallpaperManager.FLAG_SYSTEM != 0) themeChanged(wallpaper = true)
     }
@@ -91,6 +101,7 @@ class LiveService : NotificationListenerService() {
             attach(sessions?.getActiveSessions(me) ?: emptyList())
         }
         registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        runCatching { getSystemService(android.hardware.camera2.CameraManager::class.java).registerTorchCallback(torchCb, main) }
         registerReceiver(screen, IntentFilter().apply { addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) })
         restartTick()
         runCatching { WallpaperManager.getInstance(this).addOnColorsChangedListener(colors, main) }
@@ -110,6 +121,7 @@ class LiveService : NotificationListenerService() {
         callbacks.clear()
         runCatching { unregisterReceiver(battery) }
         runCatching { unregisterReceiver(screen) }
+        runCatching { getSystemService(android.hardware.camera2.CameraManager::class.java).unregisterTorchCallback(torchCb) }
         main.removeCallbacks(tick)
         runCatching { WallpaperManager.getInstance(this).removeOnColorsChangedListener(colors) }
     }
